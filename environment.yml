@@ -1,0 +1,33 @@
+name: bev-uncertainty
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+
+dependencies:
+  # Python
+  - python=3.10
+
+  # CUDA — match your GPU driver version
+  - pytorch::pytorch=2.2.2
+  - pytorch::torchvision=0.17.2
+  - pytorch::torchaudio=2.2.2
+  - pytorch::pytorch-cuda=11.8  # change to 12.1 if your driver supports it
+
+  # Conda-managed system libs
+  - cudatoolkit=11.8
+  - numpy=1.26
+  - scipy
+  - matplotlib
+  - opencv
+
+  # Pip packages (not on conda)
+  - pip:
+    - ultralytics>=8.0
+    - nuscenes-devkit
+    - dropblock          # DropBlock implementation
+    - pyquaternion       # nuScenes dependency
+    - filterpy           # for SORT tracker
+    - tqdm
+    - wandb              # optional, for experiment tracking
