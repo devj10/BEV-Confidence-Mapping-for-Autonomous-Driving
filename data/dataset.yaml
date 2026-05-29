@@ -1,0 +1,30 @@
+# nuScenes → YOLO dataset config (clear-weather split)
+#
+# How to generate the data:
+#   python data/nuscenes_to_yolo.py \
+#       --dataroot /path/to/nuscenes \
+#       --version  v1.0-trainval \
+#       --output   /path/to/yolo_out \
+#       --clear-only
+#
+# nuscenes_to_yolo.py writes its own dataset.yaml inside --output when it
+# finishes; point `yolo train` at that file, not this one.
+# This copy is the repo reference — update `path` to match your local setup.
+
+# ── Paths ─────────────────────────────────────────────────────────────────────
+path:  /path/to/yolo_out   # absolute path to the dataset root (edit this)
+train: images/train
+val:   images/val
+
+# ── Classes ───────────────────────────────────────────────────────────────────
+nc: 9
+names:
+  0: car
+  1: truck
+  2: bus
+  3: motorcycle
+  4: bicycle
+  5: emergency
+  6: pedestrian
+  7: barrier
+  8: traffic_cone
