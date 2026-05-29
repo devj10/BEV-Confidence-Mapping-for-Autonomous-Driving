@@ -89,6 +89,26 @@ Prints per-class and overall mAP@50 / mAP@50-95 to stdout and saves a JSON to `r
 
 ---
 
+### MC-DropBlock inference (Owner B)
+
+Run **T=20** stochastic forward passes per frame with DropBlock active at inference time. BatchNorm stays in eval mode; only DropBlock injects noise. Output is raw per-pass detections (no fusion across passes).
+
+**Modules:** `dropblock.py` (DropBlock + MC toggle), `inject_dropblock.py` (hooks into YOLOv8 backbone), `mc_yolo.py` (T-pass runner).
+
+```bash
+python mc_yolo.py \
+    --weights runs/detect/runs/baseline/nuscenes_mini/weights/best.pt \
+    --source  data/yolo_out/images/val \
+    --T       20 \
+    --out     results/mc_raw_detections.json
+```
+
+Use `--max-images 5` for a quick smoke test. Use `--deterministic` for a single pass with DropBlock disabled.
+
+Each frame in the JSON has `passes`: a list of length `T`, where each entry contains `xyxy`, `conf`, and `cls` for that stochastic run. Downstream steps aggregate these into BEV confidence maps.
+
+---
+
 ### Dataset
 
 - **Source:** [nuScenes v1.0-mini](https://www.nuscenes.org/) — 10 scenes, ~400 samples, 6 cameras each
