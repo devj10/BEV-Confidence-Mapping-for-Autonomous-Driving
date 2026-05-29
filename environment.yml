@@ -13,7 +13,7 @@ dependencies:
   - pytorch::pytorch=2.2.2
   - pytorch::torchvision=0.17.2
   - pytorch::torchaudio=2.2.2
-  - pytorch::pytorch-cuda=11.8  # change to 12.1 if your driver supports it
+  #- pytorch::pytorch-cuda=12.1  # change to 12.1 if your driver supports it
 
   # Conda-managed system libs
   - cudatoolkit=11.8
