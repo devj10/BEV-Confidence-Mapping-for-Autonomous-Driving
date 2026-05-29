@@ -41,7 +41,7 @@ def parse_args() -> argparse.Namespace:
                         help="Training image size in pixels (default: 640)")
     parser.add_argument("--workers",  type=int,   default=8)
     parser.add_argument("--device",   default=None,
-                        help="Device string: '0', '0,1', 'cpu' (default: auto)")
+                        help="Device string: '0', 'mps', 'cpu' (default: auto-detect)")
     parser.add_argument("--project",  default="runs/baseline",
                         help="Root directory for saving runs (default: runs/baseline)")
     parser.add_argument("--name",     default="nuscenes_clear",
@@ -109,6 +109,11 @@ def main() -> None:
 
     if args.device is not None:
         train_kwargs["device"] = args.device
+    else:
+        # Auto-select MPS on Apple Silicon when no device is specified
+        import torch
+        if torch.backends.mps.is_available():
+            train_kwargs["device"] = "mps"
 
     print(f"Model  : {args.model}")
     print(f"Data   : {data_path}")
