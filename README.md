@@ -107,6 +107,14 @@ Use `--max-images 5` for a quick smoke test. Use `--deterministic` for a single 
 
 Each frame in the JSON has `passes`: a list of length `T`, where each entry contains `xyxy`, `conf`, and `cls` for that stochastic run. Downstream steps aggregate these into BEV confidence maps.
 
+**mAP after MC-DropBlock** (fuse T passes, then match to val labels):
+
+```bash
+python eval/mc_detection_metrics.py --mc-json results/mc_raw_detections.json
+```
+
+This is not the same as standard `detection_metrics.py` — MC adds noise, so fused mAP is usually lower than deterministic val. For apples-to-apples detection accuracy, use `detection_metrics.py`; for MC uncertainty, use the JSON + fusion metrics above.
+
 ---
 
 ### Dataset
