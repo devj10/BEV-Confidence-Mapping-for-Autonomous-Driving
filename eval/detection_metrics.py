@@ -64,7 +64,7 @@ def print_results(results, class_names: list[str]) -> dict:
     print("-" * 62)
 
     per_class: dict[str, dict] = {}
-    ap50_per  = box.ap50()   # (nc,) array — aligned to ap_class_index
+    ap50_per  = box.ap50     # (nc,) array — aligned to ap_class_index
 
     for idx, cls_idx in enumerate(box.ap_class_index):
         name  = class_names[cls_idx] if cls_idx < len(class_names) else str(cls_idx)

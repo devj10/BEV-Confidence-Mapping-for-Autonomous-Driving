@@ -1,1 +1,10 @@
 data/v1.0-mini/
+data/v1.0-mini.tgz
+data/yolo_out/
+runs/
+results/
+__pycache__/
+*.pyc
+.pip_packages/
+bus.jpg
+yolov8n.pt
