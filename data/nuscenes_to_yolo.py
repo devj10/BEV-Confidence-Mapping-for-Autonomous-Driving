@@ -40,6 +40,25 @@ CAMERAS = [
     "CAM_BACK_RIGHT",
 ]
 
+try:
+    import albumentations as A
+    HAS_ALBUMENTATIONS = True
+except ImportError:
+    HAS_ALBUMENTATIONS = False
+
+def get_weather_pipeline():
+    return A.Compose([
+        A.RandomFog(fog_coef_lower=0.1, fog_coef_upper=0.35, alpha_coef=0.1, p=0.3),
+        A.RandomRain(slant_lower=-10, slant_upper=10,
+                     drop_length=15, drop_width=1,
+                     brightness_coefficient=0.9, p=0.3),
+        A.MotionBlur(blur_limit=(3, 9), p=0.2),
+    ], bbox_params=A.BboxParams(
+        format='yolo',
+        label_fields=['class_labels'],
+        min_visibility=0.3,
+    ))
+
 
 # ── Projection helpers ────────────────────────────────────────────────────────
 
@@ -101,7 +120,7 @@ def _corners_to_yolo(corners_2d: np.ndarray, img_w: int, img_h: int):
 # ── Per-scene processing ──────────────────────────────────────────────────────
 
 def process_scene(nusc: NuScenes, scene: dict, split: str,
-                  output_dir: Path, visualize: bool) -> None:
+                  output_dir: Path, visualize: bool, weather_pipeline=None) -> None:
     images_dir = output_dir / "images" / split
     labels_dir = output_dir / "labels" / split
     vis_dir    = output_dir / "visualizations" / split
@@ -162,7 +181,26 @@ def process_scene(nusc: NuScenes, scene: dict, split: str,
                 label_lines.append(f"{class_id} {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}")
 
             # Copy image (preserves the original; symlink is faster if disk is tight)
-            shutil.copy2(src_img, dest_img)
+            if weather_pipeline is not None and split == "train" and label_lines:
+                img = cv2.imread(str(src_img))
+                if img is not None:
+                    bboxes_yolo = []
+                    class_ids   = []
+                    for line in label_lines:
+                        parts = line.split()
+                        class_ids.append(int(parts[0]))
+                        bboxes_yolo.append(tuple(float(x) for x in parts[1:]))
+
+                    result = weather_pipeline(image=img, bboxes=bboxes_yolo, class_labels=class_ids)
+                    cv2.imwrite(str(dest_img), result["image"])
+                    label_lines = [
+                        f"{cls} {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}"
+                        for cls, (cx, cy, w, h) in zip(result["class_labels"], result["bboxes"])
+                    ]
+                else:
+                    shutil.copy2(src_img, dest_img)
+            else:
+                shutil.copy2(src_img, dest_img)
 
             # Write labels (empty file = valid image with no detectable objects)
             label_path.write_text("\n".join(label_lines))
@@ -244,6 +282,8 @@ def main() -> None:
                         help="Keep only clear-weather daytime scenes (filters rain/night/fog)")
     parser.add_argument("--visualize",    action="store_true",
                         help="Save annotated images to visualizations/ for a sanity check")
+    parser.add_argument("--weather-aug", action="store_true",
+                    help="Apply albumentations weather augmentation to training images")
     args = parser.parse_args()
 
     output_dir = Path(args.output)
@@ -266,8 +306,9 @@ def main() -> None:
 
     for split, scene_list in [("train", train_scenes), ("val", val_scenes)]:
         print(f"\nProcessing {split} ...")
+        pipeline = get_weather_pipeline() if (args.weather_aug and HAS_ALBUMENTATIONS and split == "train") else None
         for scene in tqdm(scene_list, unit="scene"):
-            process_scene(nusc, scene, split, output_dir, args.visualize)
+            process_scene(nusc, scene, split, output_dir, args.visualize, weather_pipeline=pipeline)
 
     write_dataset_yaml(output_dir)
     print("\nDone.")
