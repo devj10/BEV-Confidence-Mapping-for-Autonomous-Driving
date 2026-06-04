@@ -1,4 +1,4 @@
-# cs231n — BEV Confidence Mapping for Autonomous Driving
+# BEV Confidence Mapping for Autonomous Driving
 
 Uncertainty-aware Bird's-Eye-View (BEV) projection pipeline on nuScenes.
 Combines MC-DropBlock inference, 3D lifting, and Gaussian splatting to produce a
