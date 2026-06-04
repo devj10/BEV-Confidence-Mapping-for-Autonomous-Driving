@@ -1,0 +1,35 @@
+# Default configuration for BEV uncertainty pipeline
+
+# BEV Grid specification (meters)
+bev:
+  x_min: 0.0        # Behind ego
+  x_max: 50.0       # Forward
+  y_min: -25.0      # Right
+  y_max: 25.0       # Left
+  cell_size: 0.25   # meters per cell
+  grid_height: 200
+  grid_width: 200
+
+# Camera intrinsics (nuScenes CAM_FRONT, will be overridden per frame)
+camera:
+  fx: 1266.417
+  fy: 1266.417
+  cx: 816.0
+  cy: 491.0
+
+# 3D Lifting parameters
+lift_3d:
+  gt_depth_mode: true      # Use ground truth depth when available
+  lidar_mode: false        # Use LiDAR depth
+  depth_robust_method: "median"  # median, mean, or cluster
+  depth_variance_threshold: 1.0  # meters
+
+# Uncertainty scoring (Phase 3)
+uncertainty:
+  association_iou_thresh: 0.5
+  aggregation_nms_thresh: 0.5
+
+# Evaluation (Phase 4)
+evaluation:
+  calibration_enabled: true
+  sanity_checks_enabled: true
