@@ -1,126 +1,30 @@
 # cs231n
 Bird's-Eye-View (BEV) Confidence Mapping for Autonomous Driving
 
-## Getting mAP Scores — Quickstart
+## Setup
 
 ### Prerequisites
+- Conda (Miniconda or Anaconda)
+- NVIDIA GPU with CUDA 11.8+ driver
 
-Install dependencies via conda:
-
+### Install
 ```bash
 conda env create -f environment.yml
-conda activate cs231n
+conda activate bev-uncertainty
 ```
 
-Place the nuScenes v1.0-mini dataset under `data/v1.0-mini/` (already in `.gitignore`). The directory should contain `samples/`, `sweeps/`, `maps/`, and `v1.0-mini/`.
-
----
-
-### Step 1 — Convert nuScenes to YOLO format
-
-Run once to convert raw nuScenes annotations into YOLO-format images and labels.
-
-```bash
-python data/nuscenes_to_yolo.py \
-    --dataroot data/v1.0-mini \
-    --version  v1.0-mini \
-    --output   data/yolo_out \
-    --val-fraction 0.15 \
-    --clear-only
+### Verify GPU
+```python
+import torch
+print(torch.cuda.is_available())   # should be True
+print(torch.cuda.get_device_name()) # should show your GPU
 ```
 
-- `--clear-only` keeps only clear-weather daytime scenes (removes rain/night/fog)
-- `--val-fraction 0.15` holds out 15% of scenes for validation
+A few practical notes:
 
-Output: `data/yolo_out/` with `images/train` (1,452 images), `images/val` (246 images), matching `labels/`, and `dataset.yaml`. This folder is gitignored.
+- **Change `pytorch-cuda=11.8`** to `12.1` if your driver is newer — run `nvidia-smi` to check your driver version
+- **`nuscenes-devkit`** has to be pip-installed, it's not on conda
+- **`dropblock` pip package** — worth checking if it works with your PyTorch version; if not, just use the custom `DropBlock2D` class we wrote and drop that line
+- If you're on a shared cluster (like a university HPC), they often have CUDA modules you load separately — in that case remove the cudatoolkit line and just match the pytorch-cuda version to what's available
 
----
-
-### Step 2 — Train the baseline
-
-Fine-tune YOLOv8n on the nuScenes clear-weather split:
-
-```bash
-python scripts/train_baseline.py \
-    --data    data/yolo_out/dataset.yaml \
-    --model   yolov8n.pt \
-    --epochs  20 \
-    --batch   8 \
-    --imgsz   640 \
-    --device  cpu \
-    --project runs/baseline \
-    --name    nuscenes_mini
-```
-
-> **Note:** MPS (Apple Silicon) has a known bug with this version of Ultralytics — always use `--device cpu`.
-
-Checkpoints are saved to `runs/detect/runs/baseline/nuscenes_mini/weights/`. The best checkpoint (`best.pt`) is saved automatically based on val mAP.
-
-Each epoch takes ~5 min on CPU (Apple M3 Pro). 20 epochs ≈ ~1.5 hours.
-
----
-
-### Step 3 — Evaluate and get mAP scores
-
-```bash
-python eval/detection_metrics.py \
-    --weights runs/detect/runs/baseline/nuscenes_mini/weights/best.pt \
-    --data    data/yolo_out/dataset.yaml \
-    --save-json results/baseline_metrics.json
-```
-
-Prints per-class and overall mAP@50 / mAP@50-95 to stdout and saves a JSON to `results/baseline_metrics.json`.
-
----
-
-### Baseline Results (v1.0-mini, 17 epochs, YOLOv8n)
-
-| Class        | mAP@50 | mAP@50-95 |
-|--------------|--------|-----------|
-| car          | 0.582  | 0.294     |
-| truck        | 0.378  | 0.241     |
-| bus          | 0.246  | 0.175     |
-| motorcycle   | 0.180  | 0.063     |
-| bicycle      | 0.004  | 0.003     |
-| pedestrian   | 0.559  | 0.264     |
-| **all**      | **0.325** | **0.173** |
-
-> Emergency, barrier, and traffic_cone had no detections on the single val scene in v1.0-mini.
-
----
-
-### MC-DropBlock inference (Owner B)
-
-Run **T=20** stochastic forward passes per frame with DropBlock active at inference time. BatchNorm stays in eval mode; only DropBlock injects noise. Output is raw per-pass detections (no fusion across passes).
-
-**Modules:** `dropblock.py` (DropBlock + MC toggle), `inject_dropblock.py` (hooks into YOLOv8 backbone), `mc_yolo.py` (T-pass runner).
-
-```bash
-python mc_yolo.py \
-    --weights runs/detect/runs/baseline/nuscenes_mini/weights/best.pt \
-    --source  data/yolo_out/images/val \
-    --T       20 \
-    --out     results/mc_raw_detections.json
-```
-
-Use `--max-images 5` for a quick smoke test. Use `--deterministic` for a single pass with DropBlock disabled.
-
-Each frame in the JSON has `passes`: a list of length `T`, where each entry contains `xyxy`, `conf`, and `cls` for that stochastic run. Downstream steps aggregate these into BEV confidence maps.
-
-**mAP after MC-DropBlock** (fuse T passes, then match to val labels):
-
-```bash
-python eval/mc_detection_metrics.py --mc-json results/mc_raw_detections.json
-```
-
-This is not the same as standard `detection_metrics.py` — MC adds noise, so fused mAP is usually lower than deterministic val. For apples-to-apples detection accuracy, use `detection_metrics.py`; for MC uncertainty, use the JSON + fusion metrics above.
-
----
-
-### Dataset
-
-- **Source:** [nuScenes v1.0-mini](https://www.nuscenes.org/) — 10 scenes, ~400 samples, 6 cameras each
-- **After clear-weather filter:** 7 scenes (3 removed for rain/night)
-- **Split:** 1,452 train images / 246 val images
-- **Classes (9):** car, truck, bus, motorcycle, bicycle, emergency, pedestrian, barrier, traffic_cone
-- **Projection:** 3D bounding boxes projected to 2D via camera intrinsics (6 cameras per frame)
+Want me to also write out the full README with the project structure, usage instructions, and how to run the MC inference pipeline?
