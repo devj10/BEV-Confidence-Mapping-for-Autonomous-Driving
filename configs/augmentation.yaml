@@ -1,0 +1,38 @@
+# configs/augmentation.yaml
+
+# --- Ultralytics built-in augmentations ---
+# These are passed directly to model.train() as kwargs
+ultralytics:
+  hsv_h: 0.015
+  hsv_s: 0.7
+  hsv_v: 0.4
+  degrees: 10
+  translate: 0.1
+  scale: 0.5
+  shear: 2.0
+  flipud: 0.1
+  fliplr: 0.5
+  mosaic: 1.0
+  mixup: 0.1
+  copy_paste: 0.05
+
+# --- Albumentations weather pipeline ---
+# Applied in nuscenes_to_yolo.py or a custom dataset wrapper
+albumentations:
+  fog:
+    enabled: true
+    fog_coef_lower: 0.1
+    fog_coef_upper: 0.35
+    p: 0.3
+  rain:
+    enabled: true
+    slant_lower: -10
+    slant_upper: 10
+    drop_length: 15
+    drop_width: 1
+    brightness_coefficient: 0.9
+    p: 0.3
+  motion_blur:
+    enabled: true
+    blur_limit: [3, 9]
+    p: 0.2
