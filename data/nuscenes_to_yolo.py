@@ -200,6 +200,9 @@ def process_scene(nusc: NuScenes, scene: dict, split: str,
                 else:
                     shutil.copy2(src_img, dest_img)
             else:
+                if not src_img.exists():
+                    print(f"Skipping missing image: {src_img}")
+                    continue
                 shutil.copy2(src_img, dest_img)
 
             # Write labels (empty file = valid image with no detectable objects)
@@ -303,7 +306,7 @@ def main() -> None:
     train_scenes = scenes[:-n_val]
     val_scenes   = scenes[-n_val:]
     print(f"Train scenes: {len(train_scenes)}  |  Val scenes: {len(val_scenes)}")
-
+    
     for split, scene_list in [("train", train_scenes), ("val", val_scenes)]:
         print(f"\nProcessing {split} ...")
         pipeline = get_weather_pipeline() if (args.weather_aug and HAS_ALBUMENTATIONS and split == "train") else None
