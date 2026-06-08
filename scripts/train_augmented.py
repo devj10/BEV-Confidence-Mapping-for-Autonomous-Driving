@@ -25,56 +25,19 @@ sys.path.insert(0, str(REPO_ROOT))
 from inject_dropblock import inject_dropblock, remove_dropblock
 
 
-DEFAULT_ULTRALYTICS_AUG = {
-    "hsv_h": 0.015,
-    "hsv_s": 0.7,
-    "hsv_v": 0.4,
-    "degrees": 0.0,
-    "translate": 0.1,
-    "scale": 0.5,
-    "fliplr": 0.5,
-    "mosaic": 1.0,
-    "mixup": 0.15,
-    "weight_decay": 0.001, 
-    "label_smoothing": 0.1
-}
-
-
 def parse_args():
     p = argparse.ArgumentParser()
-
-    p.add_argument("--data", default="data/yolo_out/dataset.yaml")
-    p.add_argument("--model", default="yolov8s.pt")
-    p.add_argument("--epochs", type=int, default=100)
-    p.add_argument("--batch", type=int, default=8)
-    p.add_argument("--imgsz", type=int, default=640)
-    p.add_argument("--device", default="cpu")
-    p.add_argument("--patience", type=int, default=15)
-
-    # Keep defaults simple and predictable.
-    p.add_argument("--project", default="results")
-    p.add_argument("--name", default="checkpoints")
-
-    p.add_argument(
-        "--aug-config",
-        type=str,
-        default=None,
-        help="Optional YAML file with key 'ultralytics' for augmentation overrides.",
-    )
-
-    p.add_argument(
-        "--export-path",
-        type=str,
-        default=None,
-        help="Optional fixed path to copy best.pt to after training.",
-    )
-
-    p.add_argument(
-        "--weather",
-        action="store_true",
-        help="Use weather-augmented YOLO data split. This script only records the flag.",
-    )
-
+    p.add_argument("--data",    default="data/yolo_out/dataset.yaml")
+    p.add_argument("--model",   default="yolov8s.pt")
+    p.add_argument("--epochs",  type=int, default=100)
+    p.add_argument("--batch",   type=int, default=8)
+    p.add_argument("--imgsz",   type=int, default=640)
+    p.add_argument("--device",  default="cpu")
+    p.add_argument("--patience",type=int, default=15)
+    p.add_argument("--project", default="runs/augmented")
+    p.add_argument("--name",    default="nuscenes_aug_dropblock")
+    p.add_argument("--weather", action="store_true",
+                   help="Use weather-augmented YOLO data split (requires --data to point at weather dataset.yaml)")
     p.add_argument("--no-wandb", action="store_true")
 
     return p.parse_args()
@@ -195,15 +158,11 @@ def validate_dataset_yaml(data_path: str):
 def main():
     args = parse_args()
 
-    validate_dataset_yaml(args.data)
+    # Load aug config
+    aug_cfg = yaml.safe_load(open("configs/augmentation.yaml"))
+    ult_aug = aug_cfg["ultralytics"]
 
-    ult_aug = load_aug_config(args.aug_config)
-    # Remove any keys that we pass explicitly to model.train() to avoid
-    # "multiple values for keyword argument" errors if the yaml also contains them.
-    for _key in ("weight_decay", "label_smoothing", "data", "epochs", "patience",
-                 "batch", "imgsz", "device", "project", "name", "exist_ok"):
-        ult_aug.pop(_key, None)
-
+    # Init W&B
     if not args.no_wandb:
         wandb.init(
             project="cs231n-bev",
@@ -214,9 +173,10 @@ def main():
     print("Loading YOLO model...")
     model = YOLO(args.model)
 
-    print("Injecting DropBlock...")
-    inject_dropblock(model.model, block_size=7, drop_prob=0.25)
-    print("DropBlock injected.")
+    # Inject DropBlock into backbone BEFORE training starts
+    # Hooks are weight-key-neutral — checkpoint loads fine afterward
+    inject_dropblock(model.model, block_size=7, drop_prob=0.1)
+    print("DropBlock injected into backbone layers (2, 4, 6, 8)")
 
     try:
         print("Starting YOLO training...")
@@ -230,9 +190,16 @@ def main():
             project=args.project,
             name=args.name,
             exist_ok=True,
-            weight_decay=0.001,
-            label_smoothing=0.05,
-            **ult_aug,
+            # Ultralytics built-in augmentations from config:
+            hsv_h=ult_aug["hsv_h"],
+            hsv_s=ult_aug["hsv_s"],
+            hsv_v=ult_aug["hsv_v"],
+            degrees=ult_aug["degrees"],
+            translate=ult_aug["translate"],
+            scale=ult_aug["scale"],
+            fliplr=ult_aug["fliplr"],
+            mosaic=ult_aug["mosaic"],
+            mixup=ult_aug["mixup"],
         )
     finally:
         print("Removing DropBlock...")
