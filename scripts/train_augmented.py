@@ -34,7 +34,9 @@ DEFAULT_ULTRALYTICS_AUG = {
     "scale": 0.5,
     "fliplr": 0.5,
     "mosaic": 1.0,
-    "mixup": 0.0,
+    "mixup": 0.15,
+    "weight_decay": 0.001, 
+    "label_smoothing": 0.1
 }
 
 
@@ -42,7 +44,7 @@ def parse_args():
     p = argparse.ArgumentParser()
 
     p.add_argument("--data", default="data/yolo_out/dataset.yaml")
-    p.add_argument("--model", default="yolov8n.pt")
+    p.add_argument("--model", default="yolov8s.pt")
     p.add_argument("--epochs", type=int, default=100)
     p.add_argument("--batch", type=int, default=8)
     p.add_argument("--imgsz", type=int, default=640)
@@ -196,6 +198,11 @@ def main():
     validate_dataset_yaml(args.data)
 
     ult_aug = load_aug_config(args.aug_config)
+    # Remove any keys that we pass explicitly to model.train() to avoid
+    # "multiple values for keyword argument" errors if the yaml also contains them.
+    for _key in ("weight_decay", "label_smoothing", "data", "epochs", "patience",
+                 "batch", "imgsz", "device", "project", "name", "exist_ok"):
+        ult_aug.pop(_key, None)
 
     if not args.no_wandb:
         wandb.init(
@@ -208,7 +215,7 @@ def main():
     model = YOLO(args.model)
 
     print("Injecting DropBlock...")
-    inject_dropblock(model.model, block_size=7, drop_prob=0.1)
+    inject_dropblock(model.model, block_size=7, drop_prob=0.25)
     print("DropBlock injected.")
 
     try:
@@ -223,17 +230,9 @@ def main():
             project=args.project,
             name=args.name,
             exist_ok=True,
-
-            # Ultralytics augmentations
-            hsv_h=ult_aug["hsv_h"],
-            hsv_s=ult_aug["hsv_s"],
-            hsv_v=ult_aug["hsv_v"],
-            degrees=ult_aug["degrees"],
-            translate=ult_aug["translate"],
-            scale=ult_aug["scale"],
-            fliplr=ult_aug["fliplr"],
-            mosaic=ult_aug["mosaic"],
-            mixup=ult_aug["mixup"],
+            weight_decay=0.001,
+            label_smoothing=0.05,
+            **ult_aug,
         )
     finally:
         print("Removing DropBlock...")

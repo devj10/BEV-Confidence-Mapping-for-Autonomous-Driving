@@ -1,3 +1,23 @@
+# Monte Carlo inference settings
+mc_dropout:
+  T: 20               # number of stochastic forward passes
+  block_size: 5       # DropBlock block size (scales with 640px input)
+  drop_prob: 0.1      # DropBlock drop probability
+
+# Training settings
+train:
+  epochs: 100
+  patience: 30        # early stopping: halt after N epochs without improvement
+  batch: 8
+  imgsz: 640
+  device: cpu         # MPS has known Ultralytics bug — always cpu on Apple Silicon
+  optimizer: AdamW
+  lr0: 0.0005
+
+# Checkpoint export
+checkpoint:
+  export_path: results/checkpoints/model_final.pt
+=======
 # Default configuration for BEV uncertainty pipeline
 
 # BEV Grid specification (meters)
