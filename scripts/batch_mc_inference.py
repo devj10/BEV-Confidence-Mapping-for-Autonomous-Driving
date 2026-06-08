@@ -25,17 +25,25 @@ from ultralytics import YOLO
 
 
 def load_model(model_path: str, device: str = None) -> YOLO:
-    """Load YOLOv8 model."""
+    """Load YOLOv8 with hook-injected DropBlock and MC mode enabled."""
+    from inject_dropblock import inject_dropblock
+    from scripts.run_mc_inference import enable_mc_dropblock
+
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
-    
+
     print(f"Loading model from {model_path}...")
     print(f"Using device: {device}")
     model = YOLO(model_path)
-    
+
     if device == "cuda" and torch.cuda.is_available():
         model.to(device)
-    
+
+    injection = inject_dropblock(model.model)
+    for db in injection.dropblocks:
+        db.mc_inference = True
+    print(f"Injected MC-DropBlock on {len(injection.dropblocks)} layers")
+
     return model
 
 
@@ -61,13 +69,14 @@ def run_mc_inference_on_image(
             }
         }
     """
-    # Enable dropout by setting model to train mode
-    model.model.train()
-    
+    from scripts.run_mc_inference import enable_mc_dropblock
+
     passes = []
     all_confs = []
-    
+
     for pass_idx in range(num_passes):
+        # Re-enable before each pass (Ultralytics predict() may call eval() internally)
+        enable_mc_dropblock(model)
         # Run inference
         results = model.predict(
             image_path,
@@ -105,22 +114,15 @@ def run_mc_inference_on_image(
         })
         all_confs.append(confs)
     
-    # Aggregate across passes
-    aggregated = {
-        'num_passes': num_passes,
-        'num_successful': len(passes),
-    }
-    
-    if all_confs:
-        all_confs = np.array(all_confs)
-        mean_conf = np.mean(all_confs, axis=0) if all_confs.size > 0 else []
-        std_conf = np.std(all_confs, axis=0) if all_confs.size > 0 else []
-        aggregated['mean_conf'] = mean_conf.tolist() if len(mean_conf) > 0 else []
-        aggregated['std_conf'] = std_conf.tolist() if len(std_conf) > 0 else []
-    
+    # Each pass may detect a different number of boxes, so per-pass conf lists
+    # are jagged — cannot stack into a 2D array. downstream (batch_bev_evaluation)
+    # only uses num_passes, so skip the cross-pass aggregation entirely.
     return {
         'passes': passes,
-        'aggregated': aggregated,
+        'aggregated': {
+            'num_passes': num_passes,
+            'num_successful': len(passes),
+        },
     }
 
 

@@ -67,6 +67,10 @@ def get_gt_boxes_ego(nusc, sample_token, ego_pose):
 def load_detections(json_path):
     with open(json_path) as f:
         data = json.load(f)
+    # run_mc_inference.py format: [{"image": ..., "detections": [...]}]
+    if isinstance(data, list) and data and isinstance(data[0], dict) and "detections" in data[0]:
+        return data[0]["detections"]
+    # legacy format: [[det, det, ...]]
     if isinstance(data, list) and data and isinstance(data[0], list):
         return data[0]
     return data

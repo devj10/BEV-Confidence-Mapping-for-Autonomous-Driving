@@ -118,9 +118,10 @@ def main() -> None:
         batch   = args.batch,
         conf    = args.conf,
         iou     = args.iou,
-        plots   = True,   # saves confusion matrix + PR curves under the run dir
+        plots   = True,
         save_json = False,
         verbose = False,
+        save     = False,   # skip saving batch label/pred images (large, disk-heavy)
     )
     if args.device is not None:
         val_kwargs["device"] = args.device
