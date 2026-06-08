@@ -17,7 +17,6 @@ train:
 # Checkpoint export
 checkpoint:
   export_path: results/checkpoints/model_final.pt
-=======
 # Default configuration for BEV uncertainty pipeline
 
 # BEV Grid specification (meters)

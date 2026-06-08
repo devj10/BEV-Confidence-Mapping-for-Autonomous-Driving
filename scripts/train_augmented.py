@@ -200,6 +200,8 @@ def main():
             fliplr=ult_aug["fliplr"],
             mosaic=ult_aug["mosaic"],
             mixup=ult_aug["mixup"],
+            cls=1.5,       # upweight classification loss for rare classes
+            cos_lr=True,   # cosine LR schedule instead of linear decay
         )
     finally:
         print("Removing DropBlock...")

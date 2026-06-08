@@ -14,7 +14,7 @@ ultralytics:
   fliplr: 0.5
   mosaic: 1.0
   mixup: 0.1
-  copy_paste: 0.05
+  copy_paste: 0.4
 
 # --- Albumentations weather pipeline ---
 # Applied in nuscenes_to_yolo.py or a custom dataset wrapper
