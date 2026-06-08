@@ -335,6 +335,10 @@ def train_from_azure_tmp():
         check=True,
     )
 
+    # Oversampling skipped — touching 60K files on a network volume is too slow
+    # regardless of approach (copy, grep, iterdir). Class imbalance is handled by:
+    #   - cls=1.5 loss upweighting in train_augmented.py
+    #   - mosaic augmentation (mixes 4 images, increases rare class encounters)
     print("Starting training...")
     subprocess.run(
     [

@@ -39,6 +39,10 @@ def parse_args():
     p.add_argument("--weather", action="store_true",
                    help="Use weather-augmented YOLO data split (requires --data to point at weather dataset.yaml)")
     p.add_argument("--no-wandb", action="store_true")
+    p.add_argument("--export-path", default=None,
+                   help="Where to copy best.pt after training")
+    p.add_argument("--aug-config", default=None,
+                   help="Path to augmentation YAML config")
 
     return p.parse_args()
 
@@ -159,7 +163,8 @@ def main():
     args = parse_args()
 
     # Load aug config
-    aug_cfg = yaml.safe_load(open("configs/augmentation.yaml"))
+    aug_config_path = args.aug_config or "configs/augmentation.yaml"
+    aug_cfg = yaml.safe_load(open(aug_config_path))
     ult_aug = aug_cfg["ultralytics"]
 
     # Init W&B
