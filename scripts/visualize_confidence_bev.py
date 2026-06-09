@@ -82,10 +82,6 @@ CONFIDENCE_CMAP = LinearSegmentedColormap.from_list(
 )
 
 
-# ---------------------------------------------------------------------------
-# LiDAR-guided BEV colorization
-# ---------------------------------------------------------------------------
-
 def splat_lidar_to_bev(nusc, sample_token, sample, H=520, W=400):
     """
     For each LiDAR point in 3D space:
@@ -204,10 +200,6 @@ def splat_lidar_to_bev(nusc, sample_token, sample, H=520, W=400):
     return np.clip(bev_rgb, 0, 1), covered
 
 
-# ---------------------------------------------------------------------------
-# Model + MC inference
-# ---------------------------------------------------------------------------
-
 def load_model(model_path):
     from inject_dropblock import inject_dropblock
     model = YOLO(model_path)
@@ -279,10 +271,6 @@ def fov_cone_for_camera(calib, fov_deg=70, max_range=50):
     return px + tx, py + ty, heading
 
 
-# ---------------------------------------------------------------------------
-# Main render
-# ---------------------------------------------------------------------------
-
 def render(nusc, sample_token, model_path, output_path,
            scene_name="", num_passes=10):
 
@@ -309,7 +297,6 @@ def render(nusc, sample_token, model_path, output_path,
         print(f"    → {len(dets)} raw, {len(lifted)} lifted")
     print(f"Total: {len(all_lifted)} detections")
 
-    # --- Heatmap ---
     heatmap = build_heatmap(all_lifted, (H, W),
                             (GRID_X_MIN, GRID_X_MAX), (GRID_Y_MIN, GRID_Y_MAX))
     hmax = heatmap.max()
@@ -321,7 +308,6 @@ def render(nusc, sample_token, model_path, output_path,
         np.where(heatmap > 0.02, heatmap ** 0.6 * 0.88, 0.0)
     )
 
-    # -----------------------------------------------------------------------
     fig, ax = plt.subplots(figsize=(11, 12), facecolor="#0b0f18")
     ax.set_facecolor("#0b0f18")
 
