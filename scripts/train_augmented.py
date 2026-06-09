@@ -24,7 +24,6 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from inject_dropblock import inject_dropblock, remove_dropblock
 
-
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--data",    default="data/yolo_out/dataset.yaml")
@@ -52,13 +51,7 @@ def load_yaml_safe(path: Path):
 
 
 def load_aug_config(aug_config_path: str | None):
-    """
-    Returns a complete Ultralytics augmentation dict.
-
-    If --aug-config is omitted, uses defaults.
-    If file exists but is empty, uses defaults.
-    If file has only some keys, fills missing keys with defaults.
-    """
+    
     aug = dict(DEFAULT_ULTRALYTICS_AUG)
 
     if aug_config_path is None:
@@ -83,12 +76,7 @@ def load_aug_config(aug_config_path: str | None):
 
 
 def resolve_export_path(args) -> Path:
-    """
-    Priority:
-      1. --export-path
-      2. configs/default.yaml checkpoint.export_path
-      3. model_final.pt in repo root
-    """
+    
     if args.export_path:
         return Path(args.export_path)
 
@@ -105,12 +93,7 @@ def resolve_export_path(args) -> Path:
 
 
 def find_best_checkpoint(project: str, name: str) -> Path:
-    """
-    Ultralytics usually saves:
-      {project}/{name}/weights/best.pt
 
-    This function checks common locations and falls back to recursive search.
-    """
     candidates = [
         Path(project) / name / "weights" / "best.pt",
         REPO_ROOT / project / name / "weights" / "best.pt",
@@ -158,7 +141,6 @@ def validate_dataset_yaml(data_path: str):
 def main():
     args = parse_args()
 
-    # Load aug config
     aug_cfg = yaml.safe_load(open("configs/augmentation.yaml"))
     ult_aug = aug_cfg["ultralytics"]
 
