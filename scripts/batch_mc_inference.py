@@ -25,7 +25,6 @@ from ultralytics import YOLO
 
 
 def load_model(model_path: str, device: str = None) -> YOLO:
-    """Load YOLOv8 with hook-injected DropBlock and MC mode enabled."""
     from inject_dropblock import inject_dropblock
     from scripts.run_mc_inference import enable_mc_dropblock
 
@@ -53,22 +52,7 @@ def run_mc_inference_on_image(
     num_passes: int = 10,
     conf_thresh: float = 0.5,
 ) -> Dict:
-    """
-    Run MC inference with dropout enabled.
     
-    Returns:
-        {
-            'passes': [
-                {'detections': [...], 'conf': [...], 'uncertainty': [...]},
-                ...
-            ],
-            'aggregated': {
-                'mean_conf': [...],
-                'std_conf': [...],
-                'uncertainty': [...]
-            }
-        }
-    """
     from scripts.run_mc_inference import enable_mc_dropblock
 
     passes = []
@@ -114,9 +98,7 @@ def run_mc_inference_on_image(
         })
         all_confs.append(confs)
     
-    # Each pass may detect a different number of boxes, so per-pass conf lists
-    # are jagged — cannot stack into a 2D array. downstream (batch_bev_evaluation)
-    # only uses num_passes, so skip the cross-pass aggregation entirely.
+    
     return {
         'passes': passes,
         'aggregated': {
@@ -213,7 +195,7 @@ def batch_mc_inference(
             statistics['successful'] += 1
             
         except Exception as e:
-            print(f"\n❌ Error processing sample {sample_idx}: {e}")
+            print(f"\n Error processing sample {sample_idx}: {e}")
             statistics['failed'] += 1
     
     # Save aggregated results
@@ -276,7 +258,7 @@ def main():
     )
     
     print("\n" + "=" * 80)
-    print("✅ BATCH INFERENCE COMPLETE")
+    print("BATCH INFERENCE COMPLETE")
     print("=" * 80)
 
 
