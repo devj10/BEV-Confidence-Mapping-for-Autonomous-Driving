@@ -1,7 +1,5 @@
-# configs/augmentation.yaml
-
 # --- Ultralytics built-in augmentations ---
-# These are passed directly to model.train() as kwargs
+# passed directly to model.train() as kwargs
 ultralytics:
   hsv_h: 0.015
   hsv_s: 0.7
@@ -17,7 +15,7 @@ ultralytics:
   copy_paste: 0.4
 
 # --- Albumentations weather pipeline ---
-# Applied in nuscenes_to_yolo.py or a custom dataset wrapper
+# applied in nuscenes_to_yolo.py or a custom dataset wrapper
 albumentations:
   fog:
     enabled: true
