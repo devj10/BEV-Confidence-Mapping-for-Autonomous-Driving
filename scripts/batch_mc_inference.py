@@ -132,15 +132,12 @@ def batch_mc_inference(
     print("BATCH MC INFERENCE ON ALL SAMPLES")
     print("=" * 80)
     
-    # Load model
     model = load_model(model_path)
     
-    # Load dataset
     print("\nLoading nuScenes dataset...")
     nusc = NuScenes(version='v1.0-mini', dataroot='data/v1.0-mini', verbose=False)
     print(f"✓ Dataset loaded ({len(nusc.sample)} samples)")
     
-    # Process samples
     num_to_process = min(len(nusc.sample), max_samples) if max_samples else len(nusc.sample)
     print(f"\nProcessing {num_to_process} samples with {num_passes} MC passes each...\n")
     
@@ -198,7 +195,6 @@ def batch_mc_inference(
             print(f"\n Error processing sample {sample_idx}: {e}")
             statistics['failed'] += 1
     
-    # Save aggregated results
     print("\n" + "=" * 80)
     print("SAVING RESULTS")
     print("=" * 80)
@@ -208,7 +204,6 @@ def batch_mc_inference(
         json.dump(all_results, f, indent=2)
     print(f"✓ Saved {statistics['successful']} samples to {output_json}")
     
-    # Save statistics
     if statistics['detections_per_sample']:
         statistics['avg_detections'] = float(np.mean(statistics['detections_per_sample']))
         statistics['std_detections'] = float(np.std(statistics['detections_per_sample']))
@@ -220,7 +215,6 @@ def batch_mc_inference(
         json.dump(statistics, f, indent=2)
     print(f"✓ Saved statistics to {stats_json}")
     
-    # Print summary
     print("\n" + "=" * 80)
     print("INFERENCE SUMMARY")
     print("=" * 80)
