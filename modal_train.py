@@ -69,7 +69,6 @@ def download_and_convert():
     os.makedirs("/root/outputs/nuscenes", exist_ok=True)
 
     # Camera-only blobs (~170GB total, vs 300GB for full blobs)
-    # Start with 01-03 first (~50GB) — add more if you want
     files = [
         "v1.0-trainval_meta.tgz",            # metadata, small, always needed
         "v1.0-trainval01_blobs_camera.tgz",  # ~17GB
@@ -107,7 +106,7 @@ def download_and_convert():
     ], check=True)
 
     volume.commit()
-    print("All done.")
+    print("All done!")
 
 @app.function(
     image=image,
