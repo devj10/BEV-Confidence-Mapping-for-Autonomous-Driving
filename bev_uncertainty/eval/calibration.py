@@ -356,7 +356,6 @@ def save_calibration_report(
     with open(corr_path, "w") as f:
         json.dump(correlation_results, f, indent=2)
     
-    # Print summary
     print("\n" + "=" * 80)
     print("PHASE 4 — CALIBRATION ANALYSIS")
     print("=" * 80)
@@ -402,7 +401,6 @@ def save_calibration_report(
 
 
 if __name__ == "__main__":
-    # Example usage (requires pre-generated MC inference results)
     import argparse
     
     parser = argparse.ArgumentParser(description="Calibration analysis")
@@ -415,15 +413,12 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
-    # Load data
     with open(args.detections_json) as f:
         detections = json.load(f)
     with open(args.ground_truth_json) as f:
         ground_truth = json.load(f)
     
-    # Run analysis
     sparsif = sparsification_analysis(detections, ground_truth)
     corr = uncertainty_error_correlation(detections, ground_truth)
     
-    # Save report
     save_calibration_report(sparsif, corr, args.output_dir)
