@@ -367,7 +367,7 @@ def compute_combined_score(
     # Confidence variance (already in [0, 0.25])
     if conf_var is not None:
         if normalize:
-            normalized_var = min(1.0, conf_var * 4.0)  # Scale [0, 0.25] → [0, 1]
+            normalized_var = min(1.0, conf_var * 4.0)  # Scale [0, 0.25] to [0, 1]
         else:
             normalized_var = conf_var
         components["conf"] = normalized_var
