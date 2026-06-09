@@ -32,7 +32,6 @@ from bev_grid import (
 )
 
 # ---------------------------------------------------------------------------
-# CONFIG FLAG — change this to switch modes everywhere (main block + callers).
 # "single_box" | "all_t"
 MODE = "single_box"
 
@@ -206,7 +205,6 @@ if __name__ == "__main__":
     else:
         raise ValueError(f"unknown MODE={MODE!r}, expected 'single_box' or 'all_t'")
 
-    # --- numeric sanity: every fixture detection must leave a nonzero peak ---
     print(f"grid max: {grid.max():.4f}   nonzero cells: {np.count_nonzero(grid)}")
     for det in dets:
         x_m, y_m, *_ = fake_lift_to_3d(det)
