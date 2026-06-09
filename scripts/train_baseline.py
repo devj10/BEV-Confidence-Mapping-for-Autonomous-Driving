@@ -123,7 +123,6 @@ def main() -> None:
 
     results = model.train(**train_kwargs)
 
-    # ── Quick val on the best checkpoint ──────────────────────────────────────
     best_weights = Path(args.project) / args.name / "weights" / "best.pt"
     if best_weights.exists():
         print(f"\nRunning val with best checkpoint: {best_weights}")
