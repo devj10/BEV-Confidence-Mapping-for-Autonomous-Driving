@@ -39,10 +39,6 @@ from bev.lift_to_3d import (
 from bev.lidar_project import extract_depth_per_detection_devkit
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 def get_gt_boxes_ego(nusc, sample_token, ego_pose):
     sample = nusc.get("sample", sample_token)
     ego_rot = Quaternion(ego_pose["rotation"])
@@ -125,10 +121,6 @@ def cam_front_fov_patch(fov_deg=70, max_range=50):
     return ys, xs  # (plot_x_array, plot_y_array)
 
 
-# ---------------------------------------------------------------------------
-# Main render
-# ---------------------------------------------------------------------------
-
 CATEGORY_COLORS = {
     "vehicle.car":          "#4fc3f7",
     "vehicle.truck":        "#29b6f6",
@@ -170,16 +162,13 @@ def render_clean_bev(
         print("Lifting detections...")
         lifted = lift_dets(nusc, sample_token, detections, calib, ego_pose, depth_mode)
 
-    # -----------------------------------------------------------------------
     fig, ax = plt.subplots(figsize=(10, 12), facecolor="#1a1a2e")
     ax.set_facecolor("#1a1a2e")
 
-    # --- Camera FOV cone ---
     fov_px, fov_py = cam_front_fov_patch(fov_deg=70, max_range=50)
     ax.fill(fov_px, fov_py, color="#ffffff", alpha=0.04, zorder=1)
     ax.plot(fov_px, fov_py, color="#ffffff", alpha=0.15, linewidth=0.8, zorder=1)
 
-    # --- Grid lines ---
     for v in range(int(GRID_Y_MIN), int(GRID_Y_MAX) + 1, 10):
         ax.axvline(v, color="#ffffff", alpha=0.08, linewidth=0.5, zorder=0)
     for v in range(int(GRID_X_MIN), int(GRID_X_MAX) + 1, 10):
@@ -192,7 +181,6 @@ def render_clean_bev(
         ax.text(0.5, r + 0.5, f"{r} m", color="#ffffff", alpha=0.3,
                 fontsize=7, ha="center", zorder=0)
 
-    # --- GT boxes (rotated) ---
     for gt in gt_boxes:
         loc = gt["location"]
         size = gt["size"]
@@ -221,7 +209,6 @@ def render_clean_bev(
         ax.plot(np.append(xs, xs[0]), np.append(ys, ys[0]),
                 color=color, linewidth=lw, alpha=alpha, zorder=3)
 
-        # Heading arrow
         arrow_len = length * 0.45
         ax.annotate(
             "", xy=(y + np.sin(yaw) * arrow_len, x + np.cos(yaw) * arrow_len),
@@ -230,7 +217,6 @@ def render_clean_bev(
             zorder=3,
         )
 
-    # --- Lifted detections ---
     for x_m, y_m, sigma, ok in lifted:
         if not ok:
             continue
@@ -247,13 +233,11 @@ def render_clean_bev(
             ax.scatter(y_m, x_m, c="#ff5252", s=70, marker="o",
                        edgecolors="#ff5252", linewidths=0.5, alpha=0.6, zorder=6)
 
-    # --- Ego vehicle ---
     ego_box_xs = [-1, 1, 1, -1, -1]
     ego_box_ys = [-1.2, -1.2, 2.5, 2.5, -1.2]
     ax.fill(ego_box_xs, ego_box_ys, color="#ffd600", alpha=0.9, zorder=7)
     ax.plot(ego_box_xs, ego_box_ys, color="#ffd600", linewidth=1.5, zorder=7)
 
-    # --- Axes ---
     ax.set_xlim(GRID_Y_MIN, GRID_Y_MAX)
     ax.set_ylim(GRID_X_MIN, GRID_X_MAX)
     ax.set_xlabel("Lateral  ← left  |  right →  (m)", color="#cccccc", fontsize=10)
@@ -262,7 +246,6 @@ def render_clean_bev(
     for spine in ax.spines.values():
         spine.set_edgecolor("#444444")
 
-    # --- Legend ---
     legend_elements = [
         mpatches.Patch(facecolor="#4fc3f7", edgecolor="#4fc3f7", alpha=0.7, label="GT vehicle"),
         mpatches.Patch(facecolor="#ff8a65", edgecolor="#ff8a65", alpha=0.7, label="GT pedestrian"),
@@ -289,10 +272,6 @@ def render_clean_bev(
     plt.close()
     print(f"✓ Saved → {output_path}")
 
-
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser()
