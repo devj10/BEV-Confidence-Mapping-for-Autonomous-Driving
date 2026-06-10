@@ -1,18 +1,9 @@
 #!/usr/bin/env python3
 """
-Compute mAP for MC-DropBlock detections by fusing T passes per frame, then matching to GT.
+mc_detection_metrics.py
 
-MC inference (mc_yolo.py) writes raw per-pass boxes. This script aggregates them into one
-prediction set per image and reports precision / recall / mAP@50 / mAP@50-95.
-
-Usage:
-    python eval/mc_detection_metrics.py \\
-        --mc-json results/mc_raw_detections.json
-
-    # Compare fused MC vs. using only pass 0 of each frame:
-    python eval/mc_detection_metrics.py \\
-        --mc-json results/mc_raw_detections.json \\
-        --fusion pass0
+Computes mAP for MC-DropBlock detections by fusing T inference passes per frame
+and matching the result against ground-truth labels.
 """
 
 from __future__ import annotations
@@ -32,6 +23,7 @@ IOUV = torch.linspace(0.5, 0.95, 10)
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments for the MC JSON path, fusion strategy, and thresholds."""
     p = argparse.ArgumentParser(description="mAP for fused MC-DropBlock detections")
     p.add_argument("--mc-json", required=True, help="Output JSON from mc_yolo.py")
     p.add_argument(
@@ -40,13 +32,14 @@ def parse_args() -> argparse.Namespace:
         default="union_nms",
         help="union_nms: merge all T passes then NMS; pass0: first pass only",
     )
-    p.add_argument("--conf", type=float, default=0.001, help="Min confidence after fusion")
-    p.add_argument("--nms-iou", type=float, default=0.5, help="NMS IoU within fused boxes")
+    p.add_argument("--conf", type=float, default=0.001)
+    p.add_argument("--nms-iou", type=float, default=0.5)
     p.add_argument("--max-images", type=int, default=None)
     return p.parse_args()
 
 
 def image_to_label_path(image_path: Path) -> Path:
+    """Derive the YOLO label .txt path from an image path by swapping the 'images' segment."""
     parts = image_path.parts
     if "images" in parts:
         idx = parts.index("images")
@@ -56,7 +49,7 @@ def image_to_label_path(image_path: Path) -> Path:
 
 
 def load_gt_boxes(label_path: Path, img_w: int, img_h: int) -> tuple[np.ndarray, np.ndarray]:
-    """YOLO txt (cls cx cy w h norm) -> xyxy arrays."""
+    """Load a YOLO label file and return (xyxy boxes, class ids) in pixel coordinates."""
     if not label_path.exists():
         return np.zeros((0, 4)), np.zeros((0,))
     cls_list, boxes = [], []
@@ -81,6 +74,7 @@ def fuse_union_nms(
     conf: float,
     nms_iou: float,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Merge boxes from all passes, apply per-class NMS, and filter by confidence threshold."""
     xyxy, confs, clss = [], [], []
     for p in passes:
         xyxy.extend(p["xyxy"])
@@ -90,9 +84,9 @@ def fuse_union_nms(
     if not xyxy:
         return np.zeros((0, 4)), np.zeros((0,)), np.zeros((0,))
 
-    boxes = torch.tensor(xyxy, dtype=torch.float32)
-    scores = torch.tensor(confs, dtype=torch.float32)
-    classes = torch.tensor(clss, dtype=torch.int64)
+    boxes   = torch.tensor(xyxy,  dtype=torch.float32)
+    scores  = torch.tensor(confs, dtype=torch.float32)
+    classes = torch.tensor(clss,  dtype=torch.int64)
 
     keep_boxes, keep_scores, keep_cls = [], [], []
     for c in classes.unique():
@@ -105,8 +99,8 @@ def fuse_union_nms(
         keep_scores.append(s[idx])
         keep_cls.append(torch.full((len(idx),), c, dtype=torch.int64))
 
-    boxes = torch.cat(keep_boxes)
-    scores = torch.cat(keep_scores)
+    boxes   = torch.cat(keep_boxes)
+    scores  = torch.cat(keep_scores)
     classes = torch.cat(keep_cls)
 
     m = scores >= conf
@@ -114,10 +108,11 @@ def fuse_union_nms(
 
 
 def fuse_pass0(passes: list[dict], *, conf: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    p = passes[0]
-    xyxy = np.array(p["xyxy"], dtype=np.float32)
-    confs = np.array(p["conf"], dtype=np.float32)
-    clss = np.array(p["cls"], dtype=np.int64)
+    """Return detections from the first inference pass only, filtered by confidence."""
+    p     = passes[0]
+    xyxy  = np.array(p["xyxy"],  dtype=np.float32)
+    confs = np.array(p["conf"],  dtype=np.float32)
+    clss  = np.array(p["cls"],   dtype=np.int64)
     if confs.size == 0:
         return np.zeros((0, 4)), np.zeros((0,)), np.zeros((0,))
     m = confs >= conf
@@ -129,7 +124,7 @@ def match_predictions(
     true_classes: torch.Tensor,
     iou: torch.Tensor,
 ) -> np.ndarray:
-    """Same logic as Ultralytics DetectionValidator (10 IoU thresholds)."""
+    """Match predictions to GT using the same greedy IoU logic as Ultralytics DetectionValidator."""
     correct = np.zeros((pred_classes.shape[0], len(IOUV)), dtype=bool)
     if pred_classes.shape[0] == 0:
         return correct
@@ -148,7 +143,8 @@ def match_predictions(
 
 
 def print_metrics(metrics: DetMetrics, fusion: str) -> None:
-    box = metrics.box
+    """Pretty-print per-class and overall mAP results to stdout."""
+    box   = metrics.box
     names = metrics.names
     print(f"\n{'=' * 62}")
     print(f"  MC-DropBlock mAP  (fusion: {fusion})")
@@ -165,21 +161,22 @@ def print_metrics(metrics: DetMetrics, fusion: str) -> None:
 
 
 def main() -> None:
-    args = parse_args()
+    """Load MC inference JSON, fuse passes, compute mAP, and print results."""
+    args    = parse_args()
     mc_path = Path(args.mc_json)
     if not mc_path.exists():
         print(f"ERROR: not found: {mc_path}", file=sys.stderr)
         sys.exit(1)
 
-    data = json.loads(mc_path.read_text())
+    data   = json.loads(mc_path.read_text())
     frames = data["frames"]
     if args.max_images:
         frames = frames[: args.max_images]
 
-    names = {int(k): v for k, v in data.get("class_names", {}).items()}
+    names   = {int(k): v for k, v in data.get("class_names", {}).items()}
     metrics = DetMetrics(names)
 
-    for im_idx, frame in enumerate(frames):
+    for frame in frames:
         img_path = Path(frame["image"])
         if not img_path.is_absolute():
             img_path = Path.cwd() / img_path
@@ -198,10 +195,10 @@ def main() -> None:
                 frame["passes"], conf=args.conf, nms_iou=args.nms_iou
             )
 
-        gt_t = torch.tensor(gt_xyxy, dtype=torch.float32)
-        gt_c = torch.tensor(gt_cls, dtype=torch.int64)
-        pred_t = torch.tensor(pred_xyxy, dtype=torch.float32)
-        pred_c = torch.tensor(pred_cls, dtype=torch.int64)
+        gt_t        = torch.tensor(gt_xyxy,   dtype=torch.float32)
+        gt_c        = torch.tensor(gt_cls,    dtype=torch.int64)
+        pred_t      = torch.tensor(pred_xyxy, dtype=torch.float32)
+        pred_c      = torch.tensor(pred_cls,  dtype=torch.int64)
         pred_conf_t = torch.tensor(pred_conf, dtype=torch.float32)
 
         if pred_t.shape[0] == 0:
@@ -210,17 +207,17 @@ def main() -> None:
             tp = np.zeros((pred_t.shape[0], len(IOUV)), dtype=bool)
         else:
             iou = box_iou(gt_t, pred_t)
-            tp = match_predictions(pred_c, gt_c, iou)
+            tp  = match_predictions(pred_c, gt_c, iou)
 
         target_cls = gt_c.numpy() if gt_c.numel() else np.zeros((0,))
         metrics.update_stats(
             {
-                "tp": tp,
-                "conf": pred_conf_t.numpy(),
-                "pred_cls": pred_c.numpy(),
+                "tp":         tp,
+                "conf":       pred_conf_t.numpy(),
+                "pred_cls":   pred_c.numpy(),
                 "target_cls": target_cls,
                 "target_img": np.unique(gt_c.numpy()) if gt_c.numel() else np.zeros((0,)),
-                "im_name": str(img_path),
+                "im_name":    str(img_path),
             }
         )
 

@@ -1,12 +1,37 @@
-# BEV Confidence Mapping for Autonomous Driving
+# Bird's-Eye-View (BEV) Confidence Mapping for Autonomous Driving
 
-Uncertainty-aware Bird's-Eye-View (BEV) projection pipeline on nuScenes.
-Combines MC-DropBlock inference, 3D lifting, and Gaussian splatting to produce a
-per-frame confidence heat map in ego-frame meters.
+**Dev Jayram, Marissa Liu, Hannah Shu — Stanford University (CS231n / EE, 2026)**
+
+Uncertainty-aware perception pipeline that estimates per-detection uncertainty via MC-DropBlock inference on YOLOv8n and projects it into a spatial Bird's-Eye-View confidence map using LiDAR-assisted depth back-projection.
 
 ---
 
-## Pipeline overview
+## Abstract
+
+Autonomous driving perception systems often report detection confidence without representing the spatial uncertainty needed for safe planning. This paper presents an uncertainty-aware perception pipeline that uses Monte Carlo DropBlock inference with YOLOv8n to estimate per-detection uncertainty and projects it into a Bird's-Eye View (BEV) confidence map using LiDAR-assisted depth back-projection. We compute a five-component uncertainty score from variation in box position, size, coordinates, confidence, and class predictions across stochastic passes, then aggregate detections onto a BEV grid through Gaussian splatting. On the nuScenes mini validation split, the deterministic YOLOv8n baseline achieves 0.337 mAP@50 and 0.175 mAP@50--95, while aggregating 20 MC-DropBlock passes recovers mAP@50 from 0.122 to 0.227. The BEV lifting stage achieves a mean localization error of 0.43 m, and removing the highest-uncertainty 25\% of detections improves mAP@50 from 0.227 to 0.289. These results suggest that the proposed uncertainty score captures meaningful detection unreliability and provides a practical spatial confidence map for risk-aware autonomous driving.
+
+---
+
+## Results
+
+### Normalized Confusion Matrix
+![Confusion Matrix](assets/confusion_matrix_normalized.png)
+
+### Precision-Recall Curve
+![PR Curve](assets/BoxPR_curve.png)
+
+### BEV Confidence Heatmap — All Cameras, Scene 0796
+![BEV All Cameras](assets/bev_allcams_scene0796.png)
+
+---
+
+## Poster
+
+<!-- Paste poster image or embed PDF here -->
+
+---
+
+## Pipeline
 
 ```
 nuScenes frame
@@ -16,7 +41,7 @@ nuScenes frame
       │  2D boxes + confidence
       ▼
   MC-DropBlock  (T=20 stochastic forward passes)
-      │  per-pass boxes → pixel variance (var_u)
+      │  per-pass boxes → pixel variance
       ▼
   lift_to_3d  ──── GT depth  (calib + ego_pose)
       │         └── LiDAR depth  (lidar_project.py → var_z)
@@ -25,200 +50,204 @@ nuScenes frame
   uncertainty_to_bev  (pixel var → BEV sigma in meters)
       │  sigma_lat = (z/fx)·√var_u,  sigma_fwd = √var_z
       ▼
-  lift_adapter  →  LiftedDetection objects
+  splat.py  (2D Gaussian splatting onto 200×200 BEV grid)
+      │
       ▼
-  splat.py  (single_box or all_t mode)
-      │  200×200 float32 heat map
-      ▼
-  export_bev.py  →  bev_frame.json + bev_frame.png
+  bev_frame.json + bev_frame.png
 ```
 
-**Key finding:** uncertainty is depth-dominated. At 30 m with 3 px jitter,
-`sigma_fwd ≈ 0.9 m` vs `sigma_lat ≈ 0.07 m` — a 12× ratio.
-Far cars produce tall, elongated blobs; near cars produce tight dots.
-
 ---
 
-## Module map
+## File Structure
 
-### Detection & MC inference
+### Detection & MC Inference
 
-| File | What it does |
+| File | Description |
 |------|-------------|
-| `yolov8_backbone.py` | YOLOv8 feature extractor |
-| `dropblock.py` | DropBlock layer + MC-inference toggle |
-| `inject_dropblock.py` | Hooks DropBlock into a YOLOv8 backbone in-place |
+| `dropblock.py` | DropBlock2D layer and MC-inference toggle |
+| `inject_dropblock.py` | Injects DropBlock into a YOLOv8 backbone via forward hooks |
 | `mc_yolo.py` | Runs T stochastic forward passes; outputs per-pass JSON |
 
-### BEV pipeline (`bev/`)
+### BEV Pipeline (`bev/`)
 
-| File | What it does |
+| File | Description |
 |------|-------------|
 | `bev_grid.py` | Grid constants (200×200, 0.25 m/cell, x∈[0,50] m, y∈[−25,25] m) |
-| `lift_to_3d.py` | Back-project 2D detections to ego-frame 3D (GT-depth + LiDAR-depth paths) |
-| `lidar_project.py` | Project LiDAR points onto image; extract robust per-box depth + variance |
-| `uncertainty_to_bev.py` | Convert pixel variance → BEV sigma in meters |
-| `lift_adapter.py` | Batch-lift raw dicts → `LiftedDetection` objects; filter `None` failures |
-| `splat.py` | 2D Gaussian splatting onto the BEV grid (single_box + all_t modes) |
-| `run_bev.py` | Top-level conductor: lift pre-pass → splat → `BevFrame` |
+| `lift_to_3d.py` | Back-projects 2D detections to ego-frame 3D using GT or LiDAR depth |
+| `lidar_project.py` | Projects LiDAR points onto image; extracts per-box depth and variance |
+| `uncertainty_to_bev.py` | Converts pixel variance → BEV sigma in meters |
+| `lift_adapter.py` | Batch-lifts raw dicts → `LiftedDetection` objects |
+| `splat.py` | 2D Gaussian splatting onto the BEV grid |
+| `run_bev.py` | Top-level conductor: lift → splat → `BevFrame` |
 
-### Uncertainty scoring (`uncertainty/`)
+### Uncertainty Scoring (`uncertainty/`)
 
-| File | What it does |
+| File | Description |
 |------|-------------|
 | `scores.py` | Center variance, box variance, confidence variance, entropy, combined score |
-| `aggregate.py` | Fuse T per-pass detections into one set of clustered detections |
-| `associate.py` | Match detections across passes (IoU-based) |
+| `aggregate.py` | Fuses T per-pass detections into one set of clustered detections |
+| `associate.py` | Matches detections across passes via IoU |
 
-### Evaluation (`eval/`, `bev_uncertainty/eval/`)
+### Evaluation (`eval/`)
 
-| File | What it does |
+| File | Description |
 |------|-------------|
-| `eval/detection_metrics.py` | Standard mAP@50 / mAP@50-95 |
-| `eval/mc_detection_metrics.py` | mAP after MC-DropBlock fusion |
-| `eval/bev_metrics.py` | BEV-space localisation metrics |
-| `bev_uncertainty/eval/calibration.py` | Uncertainty calibration (ECE, reliability diagrams) |
-| `bev_uncertainty/eval/sanity_checks.py` | Grid/pipeline sanity checks |
+| `detection_metrics.py` | Standard mAP@50 / mAP@50-95 |
+| `mc_detection_metrics.py` | mAP after MC-DropBlock fusion |
+| `bev_metrics.py` | BEV-space localisation metrics (recall, precision, F1 by range) |
 
-### Scripts (`scripts/`)
+### Training & Cloud (`scripts/`, root)
 
-| File | What it does |
+| File | Description |
 |------|-------------|
-| `train_baseline.py` | Fine-tune YOLOv8n on nuScenes clear-weather split |
-| `train_augmented.py` | Train with data augmentation |
-| `run_mc_dropblock_inference.py` | Full MC inference run on val set |
-| `batch_mc_inference.py` | Batch version for multiple scenes |
-| `batch_bev_evaluation.py` | Run BEV pipeline over a batch of frames |
-| `validate_bev_lifting.py` | Validate GT-depth and LiDAR-depth lifting |
-| `visualize_rgb_bev.py` | Matplotlib BEV overlay (GT boxes + lifted detections) |
-| `export_bev.py` | Export BEV frame to JSON + PNG for Three.js frontend |
-| `compute_bev_metrics.py` | Aggregate BEV metrics across scenes |
+| `scripts/train_baseline.py` | Fine-tune YOLOv8n on nuScenes clear-weather split |
+| `scripts/train_augmented.py` | Train with weather augmentation |
+| `modal_train.py` | Modal app: download nuScenes from Azure, convert, train on A10G |
+
+### Data & Config
+
+| File | Description |
+|------|-------------|
+| `data/nuscenes_to_yolo.py` | Converts nuScenes 3D annotations to YOLO 2D format |
+| `data/class_map.py` | 7-class mapping from nuScenes 23-category taxonomy |
+| `data/dataset.yaml` | YOLO dataset config (update `path` to your local output) |
+| `configs/default.yaml` | Default config for training, MC inference, BEV, and evaluation |
+| `configs/augmentation.yaml` | Ultralytics and Albumentations augmentation settings |
 
 ---
 
-## Quickstart
+## Requirements
 
-### 0. Install
+### Full nuScenes Dataset
+
+Training requires the full **nuScenes v1.0-trainval** dataset (~300 GB). You will not be able to run training locally without it.
+
+- Download from [nuscenes.org](https://www.nuscenes.org/nuscenes#download) (requires free registration)
+- We used the camera-only blobs (~170 GB) stored on **Azure Blob Storage** and downloaded via `azcopy` inside a Modal cloud job
+
+### Cloud Training (Modal + Azure)
+
+Training was run on [Modal](https://modal.com/) with an A10G GPU. You need:
+
+1. A Modal account — `pip install modal && modal setup`
+2. An Azure Blob Storage container with the nuScenes blobs and a SAS URL stored as a Modal secret named `azure-sas` with key `AZURE_CONTAINER_SAS_URL`
+3. A Modal volume named `cs231n-checkpoints` for persisting the converted YOLO dataset and model checkpoint
+
+To launch training:
+
+```bash
+modal run train_modal.py
+```
+
+The job will download nuScenes from Azure to ephemeral disk, convert to YOLO format, persist the dataset to the volume, and train. On subsequent runs it skips the download if the dataset is already on the volume.
+
+The final checkpoint is saved to `/root/outputs/model_final.pt` on the volume and can be pulled down with:
+
+```bash
+modal volume get cs231n-checkpoints model_final.pt ./model_final.pt
+```
+
+---
+
+## Setup (Local / Inference Only)
 
 ```bash
 conda env create -f environment.yml
-conda activate cs231n
+conda activate bev-uncertainty
 ```
 
-Place nuScenes v1.0-mini under `data/v1.0-mini/` (gitignored).
+> **Apple Silicon:** use `--device cpu` for all training/eval commands — MPS has a known bug with this Ultralytics version.
+
+Place the pre-trained checkpoint at `model_final.pt` in the repo root (or pass `--weights` explicitly).
 
 ---
 
-### 1. Convert nuScenes → YOLO format
+## Usage
+
+### 1. Convert nuScenes → YOLO (requires local nuScenes data)
 
 ```bash
 python data/nuscenes_to_yolo.py \
-    --dataroot data/v1.0-mini \
-    --version  v1.0-mini \
+    --dataroot /path/to/nuscenes \
+    --version  v1.0-trainval \
     --output   data/yolo_out \
-    --val-fraction 0.15 \
+    --val-fraction 0.1 \
     --clear-only
 ```
 
-Output: `data/yolo_out/` — 1,452 train / 246 val images, `dataset.yaml`.
-
----
-
-### 2. Train baseline detector
+### 2. Train locally
 
 ```bash
-python scripts/train_baseline.py \
-    --data    data/yolo_out/dataset.yaml \
-    --model   yolov8n.pt \
-    --epochs  20 \
-    --batch   8 \
-    --imgsz   640 \
-    --device  cpu \
-    --project runs/baseline \
-    --name    nuscenes_mini
+python scripts/train_augmented.py \
+    --data   data/yolo_out/dataset.yaml \
+    --epochs 50 \
+    --batch  8 \
+    --device cpu
 ```
-
-> **Apple Silicon note:** use `--device cpu`; MPS has a known bug with this Ultralytics version.
-
-Checkpoints → `runs/detect/runs/baseline/nuscenes_mini/weights/best.pt`
-
----
 
 ### 3. Evaluate detection mAP
 
 ```bash
 python eval/detection_metrics.py \
-    --weights runs/detect/runs/baseline/nuscenes_mini/weights/best.pt \
+    --weights model_final.pt \
     --data    data/yolo_out/dataset.yaml \
     --save-json results/baseline_metrics.json
 ```
 
----
-
-### 4. MC-DropBlock inference
-
-Run T=20 stochastic passes per frame:
+### 4. Run MC-DropBlock inference
 
 ```bash
 python mc_yolo.py \
-    --weights runs/detect/runs/baseline/nuscenes_mini/weights/best.pt \
+    --weights model_final.pt \
     --source  data/yolo_out/images/val \
     --T       20 \
     --out     results/mc_raw_detections.json
 ```
 
-Use `--max-images 5` for a quick smoke test.
+Add `--max-images 5` for a quick smoke test.
 
----
-
-### 5. Export BEV frame (stub — no nuScenes required)
+### 5. Evaluate MC mAP
 
 ```bash
-python scripts/export_bev.py
-# → results/bev_export/bev_frame.json   (40 000-cell grid, detection list)
-# → results/bev_export/bev_frame.png    (green→red confidence heat map)
+python eval/mc_detection_metrics.py \
+    --mc-json results/mc_raw_detections.json \
+    --fusion  union_nms
 ```
 
-With a real sample token:
+### 6. Run BEV pipeline (no nuScenes required)
 
 ```bash
-python scripts/export_bev.py \
-    --sample-token <token> \
-    --depth-mode gt \
-    --mode single_box
+python bev/splat.py
+python bev/run_bev.py
 ```
 
 ---
 
-### 6. Smoke-test the BEV pipeline
+## Key Results
 
-```bash
-python bev/splat.py          # splatting + grid constants
-python bev/run_bev.py        # full conductor (both modes)
-python bev/uncertainty_to_bev.py  # sigma propagation + widening visual
-```
+| Method | mAP@50 | mAP@50-95 |
+|--------|--------|-----------|
+| Baseline (deterministic) | 0.527 | 0.304 |
+| Single stochastic pass (T=1) | 0.468 | 0.279 |
+| MC fused (T=20, mean + NMS) | 0.511 | 0.290 |
+| **Retrained YOLOv8n (full dataset)** | **0.580** | **0.327** |
 
-All three scripts are self-contained and require no nuScenes data.
-
----
-
-## Baseline results (v1.0-mini, 17 epochs, YOLOv8n)
+Per-class results (full nuScenes v1.0, 500 val images):
 
 | Class | mAP@50 | mAP@50-95 |
 |-------|--------|-----------|
-| car | 0.582 | 0.294 |
-| truck | 0.378 | 0.241 |
-| bus | 0.246 | 0.175 |
-| motorcycle | 0.180 | 0.063 |
-| bicycle | 0.004 | 0.003 |
-| pedestrian | 0.559 | 0.264 |
-| **all** | **0.325** | **0.173** |
-
-> Emergency, barrier, and traffic_cone had no detections on the single val scene in v1.0-mini.
+| car | 0.854 | 0.584 |
+| truck | 0.694 | 0.430 |
+| bus | 0.561 | 0.313 |
+| motorcycle | 0.517 | 0.304 |
+| bicycle | 0.517 | 0.304 |
+| pedestrian | 0.585 | 0.313 |
+| barrier | 0.390 | 0.218 |
+| **all** | **0.580** | **0.327** |
 
 ---
 
-## BEV grid spec
+## BEV Grid Spec
 
 | Parameter | Value |
 |-----------|-------|
@@ -227,12 +256,3 @@ All three scripts are self-contained and require no nuScenes data.
 | Cell size | 0.25 m |
 | Grid shape | 200 × 200 |
 | Origin | ego frame (x fwd, y left, z up) |
-
----
-
-## Dataset
-
-- **Source:** [nuScenes v1.0-mini](https://www.nuscenes.org/) — 10 scenes, ~400 samples, 6 cameras
-- **After clear-weather filter:** 7 scenes (3 removed for rain / night)
-- **Split:** 1,452 train / 246 val images
-- **Classes (9):** car, truck, bus, motorcycle, bicycle, emergency, pedestrian, barrier, traffic_cone

@@ -1,3 +1,10 @@
+"""
+train_modal.py
+
+Modal app that downloads nuScenes from Azure, converts it to YOLO format into a
+persistent volume, and launches augmented training on an A10G GPU.
+"""
+
 import modal
 
 app = modal.App("cs231n-train")
@@ -27,13 +34,11 @@ image = (
     .add_local_dir(".", remote_path="/root/cs231n")
 )
 
-# Persistent volume:
-#   /root/outputs/yolo_full      persisted converted YOLO dataset
-#   /root/outputs/model_final.pt persisted checkpoint
 volume = modal.Volume.from_name("cs231n-checkpoints", create_if_missing=True)
 
 
 def install_azcopy():
+    """Install azcopy into /usr/local/bin if not already present."""
     import subprocess
 
     subprocess.run(
@@ -60,6 +65,7 @@ def install_azcopy():
 
 
 def azure_prefix_url(container_sas_url: str, prefix: str) -> str:
+    """Append a blob prefix to a container-level SAS URL."""
     base, query = container_sas_url.split("?", 1)
     return f"{base}/{prefix.strip('/')}?{query}"
 
@@ -68,11 +74,12 @@ def azure_prefix_url(container_sas_url: str, prefix: str) -> str:
     image=image,
     gpu="A10G",
     timeout=60 * 60 * 12,
-    ephemeral_disk=512 * 1024,  # 512 GiB temp disk for raw nuScenes only
+    ephemeral_disk=512 * 1024,
     volumes={"/root/outputs": volume},
     secrets=[modal.Secret.from_name("azure-sas")],
 )
 def train_from_azure_tmp():
+    """Download nuScenes from Azure, convert to YOLO, and train; skip download if dataset already exists."""
     import os
     import sys
     import yaml
@@ -84,6 +91,7 @@ def train_from_azure_tmp():
     sys.path.insert(0, "/root/cs231n")
 
     def find_nuscenes_root(base: Path, version: str = "v1.0-trainval") -> Path:
+        """Search for the nuScenes dataroot containing the given version directory."""
         candidates = [
             base,
             base / "nuscenes",
@@ -109,11 +117,13 @@ def train_from_azure_tmp():
         raise FileNotFoundError(f"Could not find {version} under {base}")
 
     def count_files(path: Path, pattern: str = "*") -> int:
+        """Return the number of files matching pattern under path."""
         if not path.exists():
             return 0
         return sum(1 for _ in path.rglob(pattern))
 
     def count_images(path: Path) -> int:
+        """Return the number of image files under path."""
         if not path.exists():
             return 0
 
@@ -130,6 +140,7 @@ def train_from_azure_tmp():
         return total
 
     def print_yolo_counts(yolo_root: Path):
+        """Print train/val image and label counts for the YOLO dataset."""
         images_train = yolo_root / "images" / "train"
         images_val = yolo_root / "images" / "val"
         labels_train = yolo_root / "labels" / "train"
@@ -142,6 +153,7 @@ def train_from_azure_tmp():
         print(f"  val labels:   {count_files(labels_val, '*.txt')}")
 
     def ensure_nonempty_val_split(yolo_root: Path, max_val_images: int = 500):
+        """Move a fraction of train images to val if the val split is empty."""
         images_train = yolo_root / "images" / "train"
         images_val = yolo_root / "images" / "val"
         labels_train = yolo_root / "labels" / "train"
@@ -205,6 +217,7 @@ def train_from_azure_tmp():
         print_yolo_counts(yolo_root)
 
     def fix_dataset_yaml(yolo_root: Path) -> Path:
+        """Update the path field in dataset.yaml to match the current yolo_root."""
         yaml_path = yolo_root / "dataset.yaml"
 
         if not yaml_path.exists():
@@ -224,6 +237,7 @@ def train_from_azure_tmp():
         return yaml_path
 
     def yolo_dataset_ready(yolo_root: Path) -> bool:
+        """Return True if dataset.yaml exists and both train and val splits are non-empty."""
         yaml_path = yolo_root / "dataset.yaml"
 
         if not yaml_path.exists():
@@ -234,10 +248,7 @@ def train_from_azure_tmp():
 
         return train_count > 0 and val_count > 0
 
-    # Raw nuScenes is temporary.
     download_root = Path("/tmp/nuscenes")
-
-    # Converted YOLO dataset is persistent in Modal volume.
     yolo_root = Path("/root/outputs/yolo_full")
 
     yolo_root.mkdir(parents=True, exist_ok=True)

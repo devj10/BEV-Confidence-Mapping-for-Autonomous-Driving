@@ -1,7 +1,8 @@
 """
-Inject DropBlock2D into a YOLOv8 backbone via forward hooks.
+inject_dropblock.py
 
-Hooks do not change checkpoint keys, so pretrained / fine-tuned weights load unchanged.
+Injects DropBlock2D into a YOLOv8 backbone via forward hooks without modifying
+checkpoint keys, so pretrained weights load unchanged.
 """
 
 from __future__ import annotations
@@ -14,7 +15,6 @@ import torch.nn as nn
 
 from dropblock import DropBlock2D
 
-# Default: C2f outputs in the YOLOv8n backbone (see ultralytics yolov8.yaml).
 DEFAULT_BACKBONE_INDICES: tuple[int, ...] = (2, 4, 6, 8)
 
 
@@ -50,20 +50,7 @@ def inject_dropblock(
     drop_prob: float = 0.1,
     backbone_only: bool = True,
 ) -> DropBlockInjection:
-    """
-    Attach DropBlock2D after selected YOLO layers using forward hooks.
-
-    Parameters
-    ----------
-    yolo_model:
-        ``YOLO(...).model`` — the underlying ``DetectionModel``, not the wrapper.
-    layer_indices:
-        Indices into ``yolo_model.model``. Defaults to backbone C2f layers
-        ``(2, 4, 6, 8)`` for standard YOLOv8.
-    backbone_only:
-        If True and ``layer_indices`` is None, use ``DEFAULT_BACKBONE_INDICES``.
-        If False and ``layer_indices`` is None, inject after every layer in the stack.
-    """
+    """Attach DropBlock2D after selected YOLO layers using forward hooks."""
     stack = _yolo_layer_stack(yolo_model)
     n_layers = len(stack)
 
@@ -97,7 +84,6 @@ def inject_dropblock(
 
         hooks.append(layer.register_forward_hook(_hook))
 
-    # Stash on the model so callers can find injection state later.
     yolo_model._dropblock_injection = DropBlockInjection(dropblocks=dropblocks, hooks=hooks)  # type: ignore[attr-defined]
     return yolo_model._dropblock_injection  # type: ignore[attr-defined]
 
@@ -111,4 +97,5 @@ def remove_dropblock(yolo_model: nn.Module) -> None:
 
 
 def get_dropblock_injection(yolo_model: nn.Module) -> DropBlockInjection | None:
+    """Return the active DropBlockInjection on a model, or None if not injected."""
     return getattr(yolo_model, "_dropblock_injection", None)

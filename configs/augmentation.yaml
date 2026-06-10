@@ -1,5 +1,7 @@
-# --- Ultralytics built-in augmentations ---
-# passed directly to model.train() as kwargs
+# augmentation.yaml
+# Augmentation settings for training: Ultralytics built-in transforms passed to model.train()
+# and an Albumentations weather pipeline applied during dataset generation.
+
 ultralytics:
   hsv_h: 0.015
   hsv_s: 0.7
@@ -14,8 +16,6 @@ ultralytics:
   mixup: 0.1
   copy_paste: 0.4
 
-# --- Albumentations weather pipeline ---
-# applied in nuscenes_to_yolo.py or a custom dataset wrapper
 albumentations:
   fog:
     enabled: true
