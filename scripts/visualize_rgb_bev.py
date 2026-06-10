@@ -9,10 +9,6 @@ Shows:
   - Lifted detections as circles coloured by σ (blue=reliable, red=noisy)
   - Uncertainty ring scaled to σ
   - Ego vehicle footprint
-
-Usage:
-    python scripts/visualize_rgb_bev.py --sample-token <token> \
-        [--detections-json <path>] [--depth-mode lidar|gt] [--output <path>]
 """
 
 import sys
