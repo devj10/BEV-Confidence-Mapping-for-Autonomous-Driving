@@ -221,32 +221,6 @@ python bev/splat.py
 python bev/run_bev.py
 ```
 
----
-
-## Key Results
-
-| Method | mAP@50 | mAP@50-95 |
-|--------|--------|-----------|
-| Baseline (deterministic) | 0.527 | 0.304 |
-| Single stochastic pass (T=1) | 0.468 | 0.279 |
-| MC fused (T=20, mean + NMS) | 0.511 | 0.290 |
-| **Retrained YOLOv8n (full dataset)** | **0.580** | **0.327** |
-
-Per-class results (full nuScenes v1.0, 500 val images):
-
-| Class | mAP@50 | mAP@50-95 |
-|-------|--------|-----------|
-| car | 0.854 | 0.584 |
-| truck | 0.694 | 0.430 |
-| bus | 0.561 | 0.313 |
-| motorcycle | 0.517 | 0.304 |
-| bicycle | 0.517 | 0.304 |
-| pedestrian | 0.585 | 0.313 |
-| barrier | 0.390 | 0.218 |
-| **all** | **0.580** | **0.327** |
-
----
-
 ## BEV Grid Spec
 
 | Parameter | Value |
