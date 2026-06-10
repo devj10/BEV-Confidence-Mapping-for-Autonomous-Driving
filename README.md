@@ -1,8 +1,6 @@
 # Bird's-Eye-View (BEV) Confidence Mapping for Autonomous Driving
 
-**Dev Jayram, Marissa Liu, Hannah Shu — Stanford University (CS231n / EE, 2026)**
-
-Uncertainty-aware perception pipeline that estimates per-detection uncertainty via MC-DropBlock inference on YOLOv8n and projects it into a spatial Bird's-Eye-View confidence map using LiDAR-assisted depth back-projection.
+**Dev Jayram, Marissa Liu, Hannah Shu — Stanford University (CS231n 2026)**
 
 ---
 
@@ -22,12 +20,6 @@ Autonomous driving perception systems often report detection confidence without 
 
 ### BEV Confidence Heatmap — All Cameras, Scene 0796
 ![BEV All Cameras](assets/bev_allcams_scene0796.png)
-
----
-
-## Poster
-
-<!-- Paste poster image or embed PDF here -->
 
 ---
 
