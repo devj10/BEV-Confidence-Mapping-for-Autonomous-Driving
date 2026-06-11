@@ -23,7 +23,7 @@ Autonomous driving perception systems often report detection confidence without 
 
 ### BEV Uncertainty Heatmap — Full Scene Sequence
 
-<video src="https://raw.githubusercontent.com/devj10/cs231n/main/results/videos/bev_uncertainty_heatmap.mp4" controls width="720"></video>
+[▶ Watch video](results/videos/bev_uncertainty_heatmap.mp4)
 
 *BEV uncertainty heatmap evolving over a full nuScenes scene. Warmer colors indicate higher predicted uncertainty; the heatmap updates frame-by-frame as the ego vehicle moves through the scene and new detections are lifted and splatted onto the 200×200 BEV grid.*
 
