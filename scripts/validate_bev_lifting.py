@@ -67,17 +67,14 @@ def get_gt_boxes(nusc: NuScenes, sample_token: str, ego_pose: Dict) -> List[Dict
     sample = nusc.get('sample', sample_token)
     gt_boxes = []
     
-    # Get ego pose to transform global → ego
     ego_rotation = Quaternion(ego_pose['rotation'])
     ego_translation = np.array(ego_pose['translation'])
     
     for annotation_token in sample['anns']:
         ann = nusc.get('sample_annotation', annotation_token)
         
-        # Location is in global frame
         location_global = np.array(ann['translation'])
         
-        # Transform to ego frame: ego = R_inv @ (global - t)
         location_ego = ego_rotation.inverse.rotate(location_global - ego_translation)
         
         size = ann['size']
@@ -125,7 +122,6 @@ def lift_detections(
                 results.append((0, 0, 0, 0, False))
         return results
 
-    # GT-depth mode (default)
     results = []
     for det in detections:
         result = lift_detection_to_3d_gt_depth(det, gt_boxes, calib, ego_pose)
@@ -250,12 +246,8 @@ def visualize_bev(
     """
     fig = plt.figure(figsize=(16, 10))
     
-    # Create grid spec for better layout
     gs = fig.add_gridspec(2, 2, hspace=0.3, wspace=0.3)
     
-    # Convention: origin='lower' → row 0 at bottom = ego at bottom, row 199 at top = far forward.
-    # xlim(200, 0) flips columns so ego-left (col 199, y=+25) appears on the left of the screen.
-
     def _setup_bev_axes(ax, title):
         ax.set_title(title, fontsize=12, fontweight='bold')
         ax.set_xlabel('← ego left (y=+25m)   |   ego right (y=−25m) →')
@@ -270,12 +262,10 @@ def visualize_bev(
         ax.set_yticks(tick_cells)
         ax.set_yticklabels([f"{int(c * 0.25)}m" for c in tick_cells])
 
-    # ===== Panel 1: GT only (gray) =====
     ax0 = fig.add_subplot(gs[0, 0])
     ax0.imshow(gt_grid, cmap='Blues', origin='lower', vmin=0, vmax=1, alpha=0.7)
     _setup_bev_axes(ax0, 'Ground Truth Boxes (BEV)')
 
-    # ===== Panel 2: Detections coloured by σ (green=reliable, red=noisy) =====
     ax1 = fig.add_subplot(gs[0, 1])
 
     det_colored = np.zeros((200, 200, 3), dtype=np.float32)
@@ -461,7 +451,7 @@ def main():
     visualize_bev(det_grid, gt_grid, detections_3d, str(viz_path))
     
     print("\n" + "=" * 80)
-    print("✅ VALIDATION COMPLETE")
+    print("VALIDATION COMPLETE")
     print("=" * 80)
     print(f"\nOutputs saved to: {output_dir}/")
     print(f"  • bev_validation.png: BEV grid visualization")
