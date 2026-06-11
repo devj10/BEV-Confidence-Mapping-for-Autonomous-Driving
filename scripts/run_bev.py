@@ -45,10 +45,6 @@ from lift_adapter import (
 from lift_to_3d import lift_to_3d  # exported for callers who need the trivial shim
 
 
-# ---------------------------------------------------------------------------
-# BevFrame — the return package
-# ---------------------------------------------------------------------------
-
 @dataclass
 class BevFrame:
     """Everything produced by one run of the BEV pipeline."""
@@ -77,10 +73,6 @@ class BevFrame:
         }
 
 
-# ---------------------------------------------------------------------------
-# _bev_coords — "where does the marker go?"
-# ---------------------------------------------------------------------------
-
 def _bev_coords(
     det: LiftedDetection,
     passes_fn,
@@ -98,10 +90,6 @@ def _bev_coords(
     cloud = passes_fn(det, n_passes, rng)      # (n_passes, 2)
     return float(cloud[:, 0].mean()), float(cloud[:, 1].mean())
 
-
-# ---------------------------------------------------------------------------
-# run_bev_frame — generic conductor (swappable slots)
-# ---------------------------------------------------------------------------
 
 def run_bev_frame(
     detector_fn,
@@ -152,10 +140,6 @@ def run_bev_frame(
     return BevFrame(grid=grid, detections=det_records, mode=mode, n_passes=n_passes)
 
 
-# ---------------------------------------------------------------------------
-# run_bev_frame_real — full pipeline with lift pre-pass (GT-depth)
-# ---------------------------------------------------------------------------
-
 def run_bev_frame_real(
     raw_dets: list[dict],
     gt_boxes: list[dict],
@@ -179,11 +163,6 @@ def run_bev_frame_real(
         n_passes=n_passes,
         rng=rng,
     )
-
-
-# ---------------------------------------------------------------------------
-# run_bev_on_test_scene — self-contained sanity check, no nuScenes needed
-# ---------------------------------------------------------------------------
 
 _TEST_SCENE: list[LiftedDetection] = [
     # near & confident → tight blobs
@@ -219,10 +198,6 @@ def run_bev_on_test_scene(
         rng=rng,
     )
 
-
-# ---------------------------------------------------------------------------
-# __main__ — self-test
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     for mode in ("single_box", "all_t"):

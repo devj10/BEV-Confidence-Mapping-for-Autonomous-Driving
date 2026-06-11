@@ -59,9 +59,6 @@ def get_weather_pipeline():
         min_visibility=0.3,
     ))
 
-
-# ── Projection helpers ────────────────────────────────────────────────────────
-
 def _project_box(box, cs_record: dict, ego_record: dict, K: np.ndarray):
     """
     Project a nuScenes Box (global frame) into image coordinates.
@@ -116,8 +113,6 @@ def _corners_to_yolo(corners_2d: np.ndarray, img_w: int, img_h: int):
 
     return cx, cy, w, h
 
-
-# ── Per-scene processing ──────────────────────────────────────────────────────
 
 def process_scene(nusc: NuScenes, scene: dict, split: str,
                   output_dir: Path, visualize: bool, weather_pipeline=None) -> None:
@@ -234,8 +229,6 @@ def _draw_boxes(img_path: Path, label_lines: list[str],
     cv2.imwrite(str(out_path), img)
 
 
-# ── dataset.yaml ──────────────────────────────────────────────────────────────
-
 def write_dataset_yaml(output_dir: Path) -> None:
     lines = [
         f"path:  {output_dir.resolve()}",
@@ -251,8 +244,6 @@ def write_dataset_yaml(output_dir: Path) -> None:
     print(f"Wrote {yaml_path}")
 
 
-# ── Weather filtering ─────────────────────────────────────────────────────────
-
 # Keywords that indicate non-clear conditions in nuScenes scene descriptions.
 _BAD_WEATHER = {"rain", "rainy", "wet", "night", "dark", "fog", "foggy", "snow", "snowy"}
 
@@ -266,8 +257,6 @@ def is_clear_weather(scene: dict) -> bool:
     tokens = scene.get("description", "").lower().replace(",", " ").split()
     return not any(t in _BAD_WEATHER for t in tokens)
 
-
-# ── Entry point ───────────────────────────────────────────────────────────────
 
 def main() -> None:
     parser = argparse.ArgumentParser(

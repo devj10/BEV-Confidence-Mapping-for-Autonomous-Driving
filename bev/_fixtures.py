@@ -61,11 +61,6 @@ class FakeDetection:
 
 
 # --- the fake scene ----------------------------------------------------------
-# Hand-placed so you can eyeball it: a near car dead ahead, some mid-range
-# objects, and far objects out near the 50 m edge. Sigmas grow with range, and
-# the FORWARD sigma (sigma_x, depth-dominated) grows faster than lateral — this
-# is the physical behavior B's real depth will reproduce, so your splat should
-# already show fat blobs far away before B is even done.
 _SCENE = [
     # near & confident -> tight blobs
     FakeDetection(x_m=5.0,  y_m=0.0,   sigma_x=0.20, sigma_y=0.20, cls="car",        score=0.93),
@@ -81,16 +76,12 @@ _SCENE = [
 
 
 def get_fake_detections() -> list[FakeDetection]:
-    """Aggregated fake detections — feed these to splat.py single-box mode."""
+    """Aggregated fake detections for splat.py single-box mode."""
     return list(_SCENE)
 
 
 def fake_lift_to_3d(detection: FakeDetection):
-    """Drop-in stand-in for Owner B's real lift_to_3d.
-
-    Real signature (agreed): lift_to_3d(detection) -> (x_m, y_m, sigma_x, sigma_y)
-    so build splat / run_bev calling THIS, then swap the import when B lands.
-    """
+    """Drop-in stand-in for real lift_to_3d."""
     return detection.as_tuple()
 
 

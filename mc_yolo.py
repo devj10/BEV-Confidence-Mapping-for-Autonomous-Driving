@@ -1,16 +1,9 @@
 #!/usr/bin/env python3
 """
-Monte Carlo YOLO inference with MC-DropBlock.
+mc_yolo.py
 
-Runs T stochastic forward passes per frame (default T=20) with BatchNorm in eval
-mode and DropBlock active. Writes raw per-pass detections (no fusion across passes).
-
-Usage:
-    python mc_yolo.py \\
-        --weights runs/detect/runs/baseline/nuscenes_mini/weights/best.pt \\
-        --source  data/yolo_out/images/val \\
-        --T 20 \\
-        --out     results/mc_raw_detections.json
+Runs T stochastic forward passes per frame using MC-DropBlock (BatchNorm in eval mode,
+DropBlock active) and writes raw per-pass detections to a JSON file.
 """
 
 from __future__ import annotations
@@ -50,7 +43,7 @@ def run_mc_on_frame(
     imgsz: int = 640,
     device: str | None = None,
 ) -> list[dict[str, list]]:
-    """Run T MC passes on a single image; return T detection dicts."""
+    """Run T MC passes on a single image and return T detection dicts."""
     passes: list[dict[str, list]] = []
     predict_kwargs: dict[str, Any] = dict(
         source=str(image_path),
@@ -70,6 +63,7 @@ def run_mc_on_frame(
 
 
 def collect_image_paths(source: str | Path) -> list[Path]:
+    """Return a sorted list of image paths from a file or directory."""
     source = Path(source)
     if source.is_file():
         return [source]
@@ -92,7 +86,7 @@ def run_mc_dataset(
     imgsz: int = 640,
     device: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Run MC inference on many frames."""
+    """Run MC inference over a list of image paths and return per-frame records."""
     records: list[dict[str, Any]] = []
     for path in tqdm(image_paths, desc="MC inference", unit="frame"):
         passes = run_mc_on_frame(
@@ -104,13 +98,7 @@ def run_mc_dataset(
             imgsz=imgsz,
             device=device,
         )
-        records.append(
-            {
-                "image": str(path),
-                "T": T,
-                "passes": passes,
-            }
-        )
+        records.append({"image": str(path), "T": T, "passes": passes})
     return records
 
 
@@ -139,20 +127,17 @@ def load_mc_yolo(
 
 
 def set_inference_mode(model: YOLO, *, mc: bool) -> None:
-    """
-    Toggle between deterministic eval (DropBlock off) and MC inference (DropBlock on).
-
-    BatchNorm stays in eval mode in both cases.
-    """
+    """Toggle MC-DropBlock on or off while keeping BatchNorm in eval mode."""
     model.model.eval()
     set_mc_inference(model.model, mc)
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments for weights, source, MC passes, and output path."""
     parser = argparse.ArgumentParser(description="MC-DropBlock YOLO inference (T passes per frame)")
     parser.add_argument("--weights", required=True, help="Path to YOLO .pt checkpoint")
     parser.add_argument("--source", required=True, help="Image file or directory")
-    parser.add_argument("--T", type=int, default=20, help="Number of stochastic passes per frame")
+    parser.add_argument("--T", type=int, default=20)
     parser.add_argument("--out", required=True, help="Output JSON path for raw per-pass detections")
     parser.add_argument("--conf", type=float, default=0.25)
     parser.add_argument("--iou", type=float, default=0.7)
@@ -160,16 +145,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", default=None)
     parser.add_argument("--block-size", type=int, default=7)
     parser.add_argument("--drop-prob", type=float, default=0.1)
-    parser.add_argument(
-        "--deterministic",
-        action="store_true",
-        help="Single deterministic pass (DropBlock disabled); still writes one pass per frame",
-    )
-    parser.add_argument("--max-images", type=int, default=None, help="Cap number of images (debug)")
+    parser.add_argument("--deterministic", action="store_true",
+                        help="Single deterministic pass (DropBlock disabled)")
+    parser.add_argument("--max-images", type=int, default=None)
     return parser.parse_args()
 
 
 def main() -> None:
+    """Load model, run MC inference over the source images, and write results to JSON."""
     args = parse_args()
 
     weights = Path(args.weights)
@@ -203,17 +186,17 @@ def main() -> None:
         remove_dropblock(yolo.model)
 
     payload = {
-        "weights": str(weights.resolve()),
-        "source": str(Path(args.source).resolve()),
-        "T": T,
+        "weights":     str(weights.resolve()),
+        "source":      str(Path(args.source).resolve()),
+        "T":           T,
         "mc_inference": not args.deterministic,
-        "conf": args.conf,
-        "iou": args.iou,
-        "imgsz": args.imgsz,
-        "block_size": args.block_size,
-        "drop_prob": args.drop_prob,
+        "conf":        args.conf,
+        "iou":         args.iou,
+        "imgsz":       args.imgsz,
+        "block_size":  args.block_size,
+        "drop_prob":   args.drop_prob,
         "class_names": {int(k): v for k, v in yolo.names.items()},
-        "frames": records,
+        "frames":      records,
     }
 
     out_path = Path(args.out)

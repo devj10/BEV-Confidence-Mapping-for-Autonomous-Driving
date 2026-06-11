@@ -11,12 +11,10 @@
 # finishes; point `yolo train` at that file, not this one.
 # This copy is the repo reference — update `path` to match your local setup.
 
-# ── Paths ─────────────────────────────────────────────────────────────────────
 path:  /path/to/yolo_out   # absolute path to the dataset root (edit this)
 train: images/train
 val:   images/val
 
-# ── Classes ───────────────────────────────────────────────────────────────────
 nc: 9
 names:
   0: car

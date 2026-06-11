@@ -35,17 +35,7 @@ def run_batch_evaluation(
     output_dir: str = "results/batch_evaluation",
     distance_thresh: float = 1.0,
 ) -> Dict:
-    """
-    Run evaluation on all samples using pre-computed MC detections.
     
-    Args:
-        mc_results_file: Path to MC inference results JSON
-        output_dir: Where to save results
-        distance_thresh: Matching distance threshold
-    
-    Returns:
-        Aggregated metrics dict
-    """
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     
@@ -55,7 +45,7 @@ def run_batch_evaluation(
     
     # Load MC results
     if not Path(mc_results_file).exists():
-        print(f"❌ MC results file not found: {mc_results_file}")
+        print(f"MC results file not found: {mc_results_file}")
         return {}, {}
     
     print(f"\n[1] Loading MC detections from {mc_results_file}...")
@@ -130,7 +120,6 @@ def run_batch_evaluation(
                 'error': str(e)
             }
     
-    # Aggregate results
     print("\n" + "=" * 80)
     print("AGGREGATING RESULTS")
     print("=" * 80)
@@ -251,19 +240,17 @@ def main():
     parser.add_argument("--distance-thresh", type=float, default=1.0)
     args = parser.parse_args()
     
-    # Run evaluation
     aggregated, sample_metrics = run_batch_evaluation(
         mc_results_file=args.mc_results,
         output_dir=args.output_dir,
         distance_thresh=args.distance_thresh,
     )
     
-    # Print ranking
     if sample_metrics:
         print_sample_ranking(sample_metrics)
     
     print("\n" + "=" * 80)
-    print("✅ BATCH EVALUATION COMPLETE")
+    print("BATCH EVALUATION COMPLETE")
     print("=" * 80)
     print(f"\nResults saved to: {args.output_dir}/")
     print(f"  • aggregated_metrics.json")

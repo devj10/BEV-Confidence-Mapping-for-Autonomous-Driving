@@ -2,20 +2,8 @@
 """
 detection_metrics.py
 
-Evaluate a trained YOLOv8 checkpoint on the nuScenes val split and report
+Evaluates a trained YOLOv8 checkpoint on the nuScenes val split and reports
 per-class and overall mAP@50 / mAP@50-95.
-
-Metrics printed to stdout and optionally saved as JSON for downstream use.
-
-Usage:
-    python eval/detection_metrics.py \
-        --weights runs/baseline/nuscenes_clear/weights/best.pt \
-        --data    /path/to/yolo_out/dataset.yaml \
-        [--imgsz  640] \
-        [--batch  16] \
-        [--conf   0.001] \
-        [--iou    0.6] \
-        [--save-json results/baseline_metrics.json]
 """
 
 import argparse
@@ -27,6 +15,7 @@ from ultralytics import YOLO
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments for weights, dataset, and eval hyperparameters."""
     parser = argparse.ArgumentParser(
         description="Compute mAP for a YOLOv8 checkpoint on nuScenes val"
     )
@@ -36,41 +25,34 @@ def parse_args() -> argparse.Namespace:
                         help="dataset.yaml used during training")
     parser.add_argument("--imgsz",     type=int,   default=640)
     parser.add_argument("--batch",     type=int,   default=16)
-    parser.add_argument("--conf",      type=float, default=0.001,
-                        help="Confidence threshold for val (default: 0.001 — keeps recall high)")
-    parser.add_argument("--iou",       type=float, default=0.6,
-                        help="IoU threshold for NMS (default: 0.6)")
-    parser.add_argument("--device",    default=None,
-                        help="Device string: '0', 'cpu', etc. (default: auto)")
+    parser.add_argument("--conf",      type=float, default=0.001)
+    parser.add_argument("--iou",       type=float, default=0.6)
+    parser.add_argument("--device",    default=None)
     parser.add_argument("--save-json", default=None, metavar="PATH",
                         help="Write metrics dict to this JSON file")
     return parser.parse_args()
 
 
-# ── Formatting helpers ────────────────────────────────────────────────────────
-
 def print_results(results, class_names: list[str]) -> dict:
-    """Pretty-print per-class and overall metrics; return as a plain dict."""
-    box = results.box  # ultralytics DetMetrics
+    """Pretty-print per-class and overall metrics and return them as a plain dict."""
+    box = results.box
 
-    # Overall
-    mp   = float(box.mp)    # mean precision
-    mr   = float(box.mr)    # mean recall
-    map50    = float(box.map50)
-    map5095  = float(box.map)
+    mp      = float(box.mp)
+    mr      = float(box.mr)
+    map50   = float(box.map50)
+    map5095 = float(box.map)
 
     print("\n" + "=" * 62)
     print(f"  {'Class':<20s}  {'P':>6}  {'R':>6}  {'mAP@50':>8}  {'mAP@50-95':>10}")
     print("-" * 62)
 
     per_class: dict[str, dict] = {}
-    ap50_per  = box.ap50     # (nc,) array — aligned to ap_class_index
+    ap50_per = box.ap50
 
     for idx, cls_idx in enumerate(box.ap_class_index):
-        name  = class_names[cls_idx] if cls_idx < len(class_names) else str(cls_idx)
+        name   = class_names[cls_idx] if cls_idx < len(class_names) else str(cls_idx)
         ap50_c = float(ap50_per[idx])
         ap_c   = float(box.ap[idx])
-        # per-class P and R aren't stored separately; use overall as placeholder
         print(f"  {name:<20s}  {'—':>6}  {'—':>6}  {ap50_c:>8.3f}  {ap_c:>10.3f}")
         per_class[name] = {"ap50": ap50_c, "ap50_95": ap_c}
 
@@ -89,9 +71,8 @@ def print_results(results, class_names: list[str]) -> dict:
     }
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
-
 def main() -> None:
+    """Load a checkpoint, run validation, print metrics, and optionally save JSON."""
     args = parse_args()
 
     weights = Path(args.weights)
@@ -113,24 +94,22 @@ def main() -> None:
     model = YOLO(str(weights))
 
     val_kwargs = dict(
-        data    = str(data),
-        imgsz   = args.imgsz,
-        batch   = args.batch,
-        conf    = args.conf,
-        iou     = args.iou,
-        plots   = True,
+        data      = str(data),
+        imgsz     = args.imgsz,
+        batch     = args.batch,
+        conf      = args.conf,
+        iou       = args.iou,
+        plots     = True,
         save_json = False,
-        verbose = False,
-        save     = False,   # skip saving batch label/pred images (large, disk-heavy)
+        verbose   = False,
+        save      = False,
     )
     if args.device is not None:
         val_kwargs["device"] = args.device
 
     results = model.val(**val_kwargs)
 
-    # Class names from the model (loaded from dataset.yaml at training time)
     class_names = list(model.names.values()) if model.names else []
-
     metrics = print_results(results, class_names)
 
     if args.save_json:

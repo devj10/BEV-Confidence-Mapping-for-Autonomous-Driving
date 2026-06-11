@@ -52,10 +52,6 @@ from run_bev import BevFrame, run_bev_on_test_scene
 from splat import MODE, N_PASSES
 
 
-# ---------------------------------------------------------------------------
-# Colourmap — black background, red→yellow→green for confidence
-# ---------------------------------------------------------------------------
-
 _GREEN_RED = mcolors.LinearSegmentedColormap.from_list(
     "bev_confidence",
     [
@@ -66,11 +62,6 @@ _GREEN_RED = mcolors.LinearSegmentedColormap.from_list(
         (1.00, "#00e676"),   # 1.0  — confident, green
     ],
 )
-
-
-# ---------------------------------------------------------------------------
-# Export helpers
-# ---------------------------------------------------------------------------
 
 def frame_to_dict(frame: BevFrame) -> dict:
     """Serialise a BevFrame to a JSON-safe dict for the Three.js frontend."""
@@ -161,10 +152,6 @@ def export_frame(frame: BevFrame, out_dir: Path, stem: str = "bev_frame") -> Non
     write_png(frame,  out_dir / f"{stem}.png")
 
 
-# ---------------------------------------------------------------------------
-# Real-lift path (requires nuScenes)
-# ---------------------------------------------------------------------------
-
 def run_real(sample_token: str, depth_mode: str, bev_mode: str, n_passes: int):
     """Build a BevFrame from actual nuScenes data."""
     from nuscenes.nuscenes import NuScenes
@@ -206,11 +193,7 @@ def run_real(sample_token: str, depth_mode: str, bev_mode: str, n_passes: int):
         rng=rng,
     )
     return frame
-
-
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
+    
 
 def main():
     parser = argparse.ArgumentParser(description="Export one BEV frame to JSON + PNG.")

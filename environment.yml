@@ -7,22 +7,22 @@ channels:
 dependencies:
   - python=3.10
 
-  # PyTorch — MPS backend ships in the default macOS wheel (no CUDA needed)
   - pytorch::pytorch=2.2.2
   - pytorch::torchvision=0.17.2
   - pytorch::torchaudio=2.2.2
 
-  # System libs
   - numpy=1.26
   - scipy
   - matplotlib
   - conda-forge::opencv
+  - conda-forge::pillow
 
-  # Pip packages
   - pip:
     - ultralytics>=8.0
     - nuscenes-devkit
     - pyquaternion
+    - albumentations
     - filterpy
     - tqdm
     - wandb
+    - modal

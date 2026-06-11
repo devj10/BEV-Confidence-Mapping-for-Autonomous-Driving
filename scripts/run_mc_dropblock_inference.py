@@ -627,7 +627,7 @@ def main():
             json.dump(json_safe(all_scene_results), f, indent=2)
 
         print("\n" + "=" * 80)
-        print("✅ MC SCENE INFERENCE COMPLETED SUCCESSFULLY")
+        print("MC SCENE INFERENCE COMPLETED SUCCESSFULLY")
         print("=" * 80)
         print(f"Saved all-scene summary to: {all_summary_path}")
 
@@ -661,7 +661,7 @@ def main():
     )
 
     print("\n" + "=" * 80)
-    print("✅ MC INFERENCE COMPLETED SUCCESSFULLY")
+    print("MC INFERENCE COMPLETED SUCCESSFULLY")
     print("=" * 80)
     print(f"\nResults saved to: {args.output_dir}")
     print(f"  • Detections: {args.output_dir}/mc_detections.json")

@@ -25,7 +25,6 @@ from ultralytics import YOLO
 
 
 def load_model(model_path: str, device: str = None) -> YOLO:
-    """Load YOLOv8 with hook-injected DropBlock and MC mode enabled."""
     from inject_dropblock import inject_dropblock
     from scripts.run_mc_inference import enable_mc_dropblock
 
@@ -53,22 +52,7 @@ def run_mc_inference_on_image(
     num_passes: int = 10,
     conf_thresh: float = 0.5,
 ) -> Dict:
-    """
-    Run MC inference with dropout enabled.
     
-    Returns:
-        {
-            'passes': [
-                {'detections': [...], 'conf': [...], 'uncertainty': [...]},
-                ...
-            ],
-            'aggregated': {
-                'mean_conf': [...],
-                'std_conf': [...],
-                'uncertainty': [...]
-            }
-        }
-    """
     from scripts.run_mc_inference import enable_mc_dropblock
 
     passes = []
@@ -114,9 +98,7 @@ def run_mc_inference_on_image(
         })
         all_confs.append(confs)
     
-    # Each pass may detect a different number of boxes, so per-pass conf lists
-    # are jagged — cannot stack into a 2D array. downstream (batch_bev_evaluation)
-    # only uses num_passes, so skip the cross-pass aggregation entirely.
+    
     return {
         'passes': passes,
         'aggregated': {
@@ -150,15 +132,12 @@ def batch_mc_inference(
     print("BATCH MC INFERENCE ON ALL SAMPLES")
     print("=" * 80)
     
-    # Load model
     model = load_model(model_path)
     
-    # Load dataset
     print("\nLoading nuScenes dataset...")
     nusc = NuScenes(version='v1.0-mini', dataroot='data/v1.0-mini', verbose=False)
     print(f"✓ Dataset loaded ({len(nusc.sample)} samples)")
     
-    # Process samples
     num_to_process = min(len(nusc.sample), max_samples) if max_samples else len(nusc.sample)
     print(f"\nProcessing {num_to_process} samples with {num_passes} MC passes each...\n")
     
@@ -213,10 +192,9 @@ def batch_mc_inference(
             statistics['successful'] += 1
             
         except Exception as e:
-            print(f"\n❌ Error processing sample {sample_idx}: {e}")
+            print(f"\n Error processing sample {sample_idx}: {e}")
             statistics['failed'] += 1
     
-    # Save aggregated results
     print("\n" + "=" * 80)
     print("SAVING RESULTS")
     print("=" * 80)
@@ -226,7 +204,6 @@ def batch_mc_inference(
         json.dump(all_results, f, indent=2)
     print(f"✓ Saved {statistics['successful']} samples to {output_json}")
     
-    # Save statistics
     if statistics['detections_per_sample']:
         statistics['avg_detections'] = float(np.mean(statistics['detections_per_sample']))
         statistics['std_detections'] = float(np.std(statistics['detections_per_sample']))
@@ -238,7 +215,6 @@ def batch_mc_inference(
         json.dump(statistics, f, indent=2)
     print(f"✓ Saved statistics to {stats_json}")
     
-    # Print summary
     print("\n" + "=" * 80)
     print("INFERENCE SUMMARY")
     print("=" * 80)
@@ -276,7 +252,7 @@ def main():
     )
     
     print("\n" + "=" * 80)
-    print("✅ BATCH INFERENCE COMPLETE")
+    print("BATCH INFERENCE COMPLETE")
     print("=" * 80)
 
 

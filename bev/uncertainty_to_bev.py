@@ -123,9 +123,7 @@ if __name__ == "__main__":
 
     print("uncertainty_to_bev — pixel variance → BEV sigma\n")
 
-    # ------------------------------------------------------------------
     # 1. Headline: forward >> lateral at 30 m
-    # ------------------------------------------------------------------
     sx, sy = pixel_var_to_bev_sigma(var_u=9.0, z=30.0, var_z=0.8)
     print(f"Headline  z=30 m, var_u=9 px², var_z=0.8 m²")
     print(f"  sigma_forward (sigma_x) = {sx:.3f} m   [= √var_z]")
@@ -136,11 +134,7 @@ if __name__ == "__main__":
     assert sy  < 0.15,       f"lateral sigma off: {sy:.3f}"
     assert sx  > sy,         "forward must dominate"
 
-    # ------------------------------------------------------------------
     # 2. Both terms grow with distance — explicit monotonicity check
-    #    var_u fixed (same pixel jitter); var_z grows with range (LiDAR
-    #    depth spread increases as fewer points hit the box).
-    # ------------------------------------------------------------------
     RANGES  = [5.0, 10.0, 20.0, 30.0, 42.0, 50.0]
     VAR_U   = 9.0                                    # px²  — fixed detector jitter
     VAR_Z   = [0.04, 0.10, 0.40, 0.80, 1.60, 2.20]  # m²   — grows with range
@@ -162,17 +156,13 @@ if __name__ == "__main__":
         "sigma_lat must grow with range"
     print("\nBoth terms grow monotonically with distance  ✓")
 
-    # ------------------------------------------------------------------
-    # 3. Fallback (no var_z) → isotropic
-    # ------------------------------------------------------------------
+    # 3. Fallback (no var_z)
     sx_fb, sy_fb = pixel_var_to_bev_sigma(VAR_U, 30.0, var_z=None)
     assert sx_fb == sy_fb, "fallback must be isotropic"
     print(f"Fallback (no var_z): sigma_x = sigma_y = {sx_fb:.3f} m  ✓\n")
 
-    # ------------------------------------------------------------------
+
     # 4. Visual: splat three blobs (near / mid / far) sized by real sigmas
-    #    so you can see the widening in the heat map.
-    # ------------------------------------------------------------------
     grid = np.zeros((GRID_H, GRID_W), dtype=np.float32)
     cars = [
         (5.0,  0.0,  5.0,   0.04),   # near

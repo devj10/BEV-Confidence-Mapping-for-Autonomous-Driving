@@ -1,8 +1,8 @@
 """
-DropBlock2D for MC-DropBlock uncertainty estimation.
+dropblock.py
 
-During standard eval, activations pass through unchanged. With ``mc_inference=True``
-(or ``model.train()``), spatial blocks are dropped stochastically on each forward pass.
+Implements DropBlock2D for MC-DropBlock uncertainty estimation; blocks are dropped
+stochastically per forward pass during training or MC inference, and pass through unchanged otherwise.
 """
 
 from __future__ import annotations
@@ -35,7 +35,6 @@ class DropBlock2D(nn.Module):
         p = self.drop_prob / (self.block_size**2)
         mask = torch.bernoulli(torch.full((B, C, mask_h, mask_w), p, device=x.device, dtype=x.dtype))
 
-        # Expand seed mask to block mask; pad/crop so spatial dims match x exactly.
         pad = self.block_size // 2
         mask = F.pad(mask, (pad, pad, pad, pad), value=0)
         mask = F.max_pool2d(

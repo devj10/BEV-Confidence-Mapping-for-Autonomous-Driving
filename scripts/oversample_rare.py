@@ -23,7 +23,6 @@ from pathlib import Path
 
 import yaml
 
-# Classes to oversample (indices from class_map.py)
 RARE_CLASSES = {3, 4, 7, 8}  # motorcycle, bicycle, barrier, traffic_cone
 
 

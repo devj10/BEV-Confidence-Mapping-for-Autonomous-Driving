@@ -76,7 +76,7 @@ def draw_detections_on_images(
         x2 = max(0, min(x2, img_w - 1))
         y2 = max(0, min(y2, img_h - 1))
 
-        # Uncertainty → color (green to red)
+        # Uncertainty to color (green to red)
         uncertainty = det.get("uncertainty", 0.0)
         if unc_max > unc_min:
             unc_norm = (uncertainty - unc_min) / (unc_max - unc_min)
@@ -84,7 +84,7 @@ def draw_detections_on_images(
             unc_norm = 0.5
         unc_norm = max(0.0, min(1.0, unc_norm))
 
-        # HSV: Hue 120 (green) → 0 (red), keep saturation/value constant
+        # HSV: Hue 120 (green) to 0 (red), keep saturation/value constant
         # In OpenCV, hue is 0-180, so green is ~60, red is 0
         hue = int(120 * (1 - unc_norm))
         color_hsv = np.array([[[hue, 255, 255]]], dtype=np.uint8)

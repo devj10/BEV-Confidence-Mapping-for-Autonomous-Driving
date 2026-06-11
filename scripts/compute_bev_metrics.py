@@ -89,7 +89,7 @@ def main():
     print(f"✓ Saved → {output_path}")
 
     print("\n" + "=" * 80)
-    print("✅ EVALUATION COMPLETE")
+    print("EVALUATION COMPLETE")
     print("=" * 80)
     print(f"\n  Recall:    {metrics['overall']['recall']:.1%}")
     print(f"  Precision: {metrics['overall']['precision']:.1%}")

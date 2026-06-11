@@ -1,3 +1,10 @@
+"""
+modal_train.py
+
+Modal app with functions to download nuScenes from S3, convert to YOLO format,
+and run augmented training on a GPU instance.
+"""
+
 import modal
 
 app = modal.App("cs231n-train")
@@ -16,7 +23,7 @@ image = (
         "pyquaternion",
         "pyyaml",
         "tqdm",
-        "opencv-python-headless", 
+        "opencv-python-headless",
     ])
     .add_local_dir(".", remote_path="/root/cs231n")
 )
@@ -30,6 +37,7 @@ volume = modal.Volume.from_name("cs231n-checkpoints", create_if_missing=True)
     volumes={"/root/outputs": volume},
 )
 def train():
+    """Fix dataset.yaml path, run augmented training, and copy the checkpoint to the volume."""
     import subprocess, sys, os, shutil, yaml
 
     os.chdir("/root/cs231n")
@@ -64,17 +72,16 @@ def train():
     volumes={"/root/outputs": volume},
 )
 def download_and_convert():
+    """Download camera-only nuScenes blobs from S3 and convert to YOLO format."""
     import subprocess, os
 
     os.makedirs("/root/outputs/nuscenes", exist_ok=True)
 
-    # Camera-only blobs (~170GB total, vs 300GB for full blobs)
-    # Start with 01-03 first (~50GB) — add more if you want
     files = [
-        "v1.0-trainval_meta.tgz",            # metadata, small, always needed
-        "v1.0-trainval01_blobs_camera.tgz",  # ~17GB
-        "v1.0-trainval02_blobs_camera.tgz",  # ~16GB
-        "v1.0-trainval03_blobs_camera.tgz",  # ~16GB
+        "v1.0-trainval_meta.tgz",
+        "v1.0-trainval01_blobs_camera.tgz",
+        "v1.0-trainval02_blobs_camera.tgz",
+        "v1.0-trainval03_blobs_camera.tgz",
     ]
 
     for f in files:
@@ -92,10 +99,9 @@ def download_and_convert():
             "-C", "/root/outputs/nuscenes/"
         ], check=True)
 
-        os.remove(f"/root/outputs/nuscenes/{f}")  # free up space immediately
+        os.remove(f"/root/outputs/nuscenes/{f}")
         print(f"Done with {f}")
 
-    # Convert to YOLO
     print("Converting to YOLO format...")
     subprocess.run([
         "python", "/root/cs231n/data/nuscenes_to_yolo.py",
@@ -107,7 +113,7 @@ def download_and_convert():
     ], check=True)
 
     volume.commit()
-    print("All done.")
+    print("All done!")
 
 @app.function(
     image=image,
@@ -115,6 +121,7 @@ def download_and_convert():
     volumes={"/root/outputs": volume},
 )
 def convert_only():
+    """Run only the nuScenes-to-YOLO conversion step."""
     import subprocess
     subprocess.run([
         "python", "/root/cs231n/data/nuscenes_to_yolo.py",
@@ -123,7 +130,7 @@ def convert_only():
         "--output",   "/root/outputs/yolo_full",
         "--val-fraction", "0.1",
         "--clear-only",
-        "--no-copy",    # ← add this flag
+        "--no-copy",
     ], check=True)
     volume.commit()
 

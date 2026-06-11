@@ -37,7 +37,7 @@ def map_pointcloud_to_image(
     """
     image_h, image_w = image_shape
     
-    # Transform ego→camera from the camera→ego transform.
+    # Transform ego→camera from the camera-to-ego transform.
     R_ego_cam, t_ego_cam = invert_rigid_transform(R, t)
     
     points_cam = (R_ego_cam @ points_ego.T + t_ego_cam).T  # Nx3
